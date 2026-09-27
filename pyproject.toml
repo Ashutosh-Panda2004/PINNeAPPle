@@ -368,6 +368,7 @@ include = [
   "pinneapple_catalog/**",
   "pinneapple_twin3d/**",
   "pinneapple_llm/**",
+  "pinneapple_decision/**",
   "pinneapple_blender/**",
   "pinneapple_perception/**",
   "pinneapple_arena/**",
