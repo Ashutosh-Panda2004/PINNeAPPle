@@ -8,10 +8,10 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 | Categoria | ✅ | 🟡 | ⚪ |
 |---|---|---|---|
-| A. Solvers (S) | 5 | 13 | 6 |
-| B. Métodos de treino (T) | 1 | 10 | 9 |
-| C. Equações físicas (E) | 25 | 24 | 16 |
-| D. Problemas físicos (P) | 22 | 11 | 33 |
+| A. Solvers (S) | 11 | 12 | 3 |
+| B. Métodos de treino (T) | 1 | 12 | 9 |
+| C. Equações físicas (E) | 36 | 21 | 8 |
+| D. Problemas físicos (P) | 27 | 8 | 31 |
 
 ## A. Solvers (S)
 
@@ -28,20 +28,20 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Hughes, The Finite Element Method: Linear Static and Dynamic FEA, Dover, 2000 · Zienkiewicz, Taylor & Zhu, The Finite Element Method: Its Basis and Fundamentals, 7th ed., 2013
 
 ### S3 — Finite volumes
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_fvm_diffusion_decays_the_first_mode_at_the_exact_rate`
 - **Código:** `pinneapple_simulation/numerical_solvers/fvm.py`
 - **Referências adicionadas:** Versteeg & Malalasekera, An Introduction to Computational Fluid Dynamics: The Finite Volume Method, 2nd ed., Pearson, 2007 · LeVeque, Finite Volume Methods for Hyperbolic Problems, Cambridge University Press, 2002
 
 ### S4 — Spectral (Fourier pseudo-spectral)
-- **Estado:** 🟡 testado, sem referência
-- **Revisão manual:** the hit compares gradient backends with each other (consistency), not the spectral solver with an independent reference
-- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d`; `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_spectral_poisson_is_exact_for_a_fourier_mode`
 - **Código:** `pinneapple_simulation/numerical_solvers/spectral.py`
 - **Referências adicionadas:** Trefethen, Spectral Methods in MATLAB, SIAM, 2000 · Canuto, Hussaini, Quarteroni & Zang, Spectral Methods: Fundamentals in Single Domains, Springer, 2006
 
 ### S5 — Lattice Boltzmann D2Q9 / D3Q19 (+ Smagorinsky LES)
 - **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle-CFD/tests/test_e04_recomendacao.py::test_ca_e4_01_laminar_e_turbulento`; `PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_lbm_laminar_is_zero`; `PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_lbm_les_smagorinsky_custom_cs` (+13)
+- **Evidência:** `PINNeAPPle-CFD/tests/test_e04_metodos.py::test_nunca_recomenda_lbm`; `PINNeAPPle-CFD/tests/test_e04_recomendacao.py::test_ca_e4_01_laminar_e_turbulento`; `PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_lbm_laminar_is_zero` (+17)
 - **Código:** `pinneapple_simulation/numerical_solvers/lbm.py`
 - **Referências no código:** Zou & He, Phys. Fluids 9 (1997) 1591 -- pressure/velocity boundary conditions · Hou, Sterling, Chen & Doolen (1994) -- Smagorinsky LES-LBM
 - **Referências adicionadas:** Krueger et al., The Lattice Boltzmann Method: Principles and Practice, Springer, 2017
@@ -77,7 +77,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Hairer & Wanner, Solving Ordinary Differential Equations II: Stiff and DAE Problems, 2nd ed., Springer, 1996
 
 ### S11 — TVD advection
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_tvd_advection_second_order_on_smooth_data_and_no_new_extrema`
 - **Código:** `pinneapple_simulation/numerical_solvers/tvd_advection.py`
 - **Referências adicionadas:** Harten, High resolution schemes for hyperbolic conservation laws, J. Comput. Phys. 49 (1983) 357-393 · Sweby, High resolution schemes using flux limiters, SIAM J. Numer. Anal. 21(5) (1984) 995-1011
 
@@ -87,7 +88,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Peskin, The immersed boundary method, Acta Numerica 11 (2002) 479-517 · Mittal & Iaccarino, Immersed boundary methods, Annu. Rev. Fluid Mech. 37 (2005) 239-261
 
 ### S13 — Beam BVP FDM / 3D elasticity FDM
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_is_second_order`; `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_matches_textbook_deflections`
 - **Código:** `pinneapple_simulation/numerical_solvers/beam_bvp_fdm.py`, `pinneapple_simulation/numerical_solvers/elasticity3d_fdm.py`
 - **Referências adicionadas:** Timoshenko & Goodier, Theory of Elasticity, 3rd ed., McGraw-Hill, 1970 · LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations, SIAM, 2007
 
@@ -140,7 +142,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 ### S21 — Digital twin state estimation: KF/EKF/UKF/EnKF, prognostics, signal reconstruction
 - **Estado:** 🟡 testado, sem referência
 - **Revisão manual:** the only 'reference' hit is an OPC-UA live-stream test; no state-estimation result is compared with an independent reference
-- **Evidência:** `PINNeAPPle/tests/test_digital_twin_streams_scada_live.py::test_opcua_stream_reads_real_values_from_a_real_server`
+- **Evidência:** `PINNeAPPle/tests/test_digital_twin_streams_scada_live.py::test_opcua_stream_reads_real_values_from_a_real_server`; `PINNeAPPle/tests/test_telemetry_conditioning.py::test_first_order_filter_matches_closed_form_step_response_with_irregular_sampling`
 - **Código:** `pinneapple_systems/digital_twin/`, `pinneapple_neural/architectures/classical_ts/`
 - **Referências adicionadas:** Kalman, A new approach to linear filtering and prediction problems, J. Basic Eng. 82 (1960) 35-45 · Julier & Uhlmann, Unscented filtering and nonlinear estimation, Proc. IEEE 92(3) (2004) 401-422 · Evensen, Sequential data assimilation with a nonlinear QG model, J. Geophys. Res. 99(C5) (1994) 10143 · Simon, Optimal State Estimation, Wiley, 2006
 
@@ -159,9 +161,21 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 ### S24 — External solvers: OpenFOAM, FEniCS, ANSYS/CFD formats, MATLAB, Modelica/FMI, MuJoCo, Genesis, TurboDesigner
 - **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_caso_exportado_le_no_foamdictionary_e_roda_simplefoam`; `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_exportacao_todos_os_patches_em_todos_os_campos_e_reprodutivel`; `PINNeAPPle-CFD/tests/test_e03_geometria_malha.py::test_api_malha_valida_e_cria_job` (+36)
+- **Evidência:** `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_caso_exportado_le_no_foamdictionary_e_roda_simplefoam`; `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_exportacao_todos_os_patches_em_todos_os_campos_e_reprodutivel`; `PINNeAPPle-CFD/tests/test_e03_geometria_cliente.py::test_api_upload_confirmar_previa_e_malha_cliente` (+63)
 - **Código:** `pinneapple_simulation/external_solvers/`
 - **Referências adicionadas:** Weller, Tabor, Jasak & Fureby, A tensorial approach to CFD, Comput. Phys. 12(6) (1998) 620-631 (OpenFOAM) · Baratta et al., DOLFINx: the next generation FEniCS problem solving environment, 2023 · Blochwitz et al., The Functional Mockup Interface, Modelica Conference 2011 · Todorov, Erez & Tassa, MuJoCo, IROS 2012
+
+### S25 — Causal telemetry conditioning (Hampel one-step, rate limit, first-order filter, gaps)
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_telemetry_conditioning.py::test_first_order_filter_matches_closed_form_step_response_with_irregular_sampling`
+- **Código:** `pinneapple_systems/digital_twin/conditioning.py`
+- **Referências no código:** Hampel, The influence curve and its role in robust estimation, J. Am. Stat. Assoc. 69 (1974) 383-393 · Pearson, Outliers in process modeling and identification, IEEE Trans. Control Syst. Technol. 10(1) (2002) 55-63
+
+### S26 — 2D shallow-water finite volumes (MUSCL + HLL, wet/dry, walls, gates, virtual sensors, health checks)
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_shallow_water_fv.py::test_ritter_dry_bed_dam_break`
+- **Código:** `pinneapple_simulation/numerical_solvers/shallow_water_fv.py`
+- **Referências adicionadas:** Toro, Shock-Capturing Methods for Free-Surface Shallow Flows, Wiley, 2001 · Ritter, Die Fortpflanzung der Wasserwellen, Z. Vereines Deutscher Ingenieure 36 (1892) 947-954 · Stoker, Water Waves, Interscience, 1957 (wet-bed dam break)
 
 
 ## B. Métodos de treino (T)
@@ -281,6 +295,19 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Código:** `pinneapple_neural/trainer/self_scaled_qn.py`
 - **Referências no código:** Urban, Stefanou & Pons, Unveiling the optimization process of PINNs, J. Comput. Phys. 523 (2025) 113656, arXiv:2405.04230 -- eqs. (7)-(23), Appendix B · Jnini, Kiyani, Shukla et al., Curvature-Aware Optimization for High-Accuracy PINNs, arXiv:2604.05230 (benchmarks: Euler/HLLC, Helmholtz, inviscid Burgers, Stokes, PK-PD) · Wang, Teng & Perdikaris, gradient pathologies in PINNs, SIAM J. Sci. Comput. 43(5) (2021), arXiv:2001.04536 -- Helmholtz benchmark
 
+### T21 — Autoresearch loop (fixed-budget trials, keep/revert, random or LLM proposer)
+- **Estado:** 🟡 testado, sem referência
+- **Evidência:** `PINNeAPPle/tests/test_arena_autoresearch.py::test_loop_keeps_improvements_reverts_the_rest_and_logs`; `PINNeAPPle/tests/test_arena_autoresearch.py::test_real_pinn_template_runs_and_reports_the_metric`
+- **Código:** `pinneapple_arena/autoresearch.py`
+- **Referências adicionadas:** karpathy/autoresearch (MIT), https://github.com/karpathy/autoresearch
+
+### T22 — Large Physics Model blocks (Fourier encoding, multi-scale neighbourhoods, geometry code, ensemble UQ, OOD score, fine-tuning)
+- **Estado:** 🟡 testado, sem referência
+- **Evidência:** `PINNeAPPle/tests/test_lpm.py::test_fourier_encoding_shape`; `PINNeAPPle/tests/test_lpm.py::test_neighbourhood_features_do_not_depend_on_surface_point_order`; `PINNeAPPle/tests/test_lpm.py::test_query_independence_permutation_and_subsets`
+- **Código:** `pinneapple_neural/lpm.py`
+- **Referências no código:** Luminary, Vocabulary of Physics AI / How Large Physics Models gain spatial context (2026) · Tancik et al., Fourier features let networks learn high frequency functions, NeurIPS 2020, arXiv:2006.10739 · Zaheer et al., Deep Sets, NeurIPS 2017, arXiv:1703.06114 · Lakshminarayanan, Pritzel & Blundell, Deep ensembles, NeurIPS 2017, arXiv:1612.01474
+- **Referências adicionadas:** Milne-Thomson, Theoretical Hydrodynamics, §9.61 (ellipse potential flow, benchmark reference)
+
 
 ## C. Equações físicas (E)
 
@@ -297,7 +324,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
 ### E3 — Helmholtz
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_helmholtz_eigenfunction`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
@@ -308,12 +336,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Incropera, DeWitt, Bergman & Lavine, Fundamentals of Heat and Mass Transfer, 7th ed., Wiley, 2011 · Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
 ### E5 — Wave
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_wave_standing_mode`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
 ### E6 — Advection-diffusion / convection
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_advection_diffusion_decaying_travelling_wave`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations, SIAM, 2007
 
@@ -348,13 +378,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Batchelor, An Introduction to Fluid Dynamics, Cambridge University Press, 1967
 
 ### E12 — Stokes
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_codegen.py::test_classify_physics_shape_on_real_presets`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_stokes_polynomial_flow`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Batchelor, An Introduction to Fluid Dynamics, Cambridge University Press, 1967
 
 ### E13 — Brinkman
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_brinkman_boundary_layer_profile`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Brinkman, A calculation of the viscous force exerted by a flowing fluid on a dense swarm of particles, Appl. Sci. Res. A1 (1949) 27-34
 
@@ -376,8 +407,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Toro, Riemann Solvers and Numerical Methods for Fluid Dynamics, 3rd ed., Springer, 2009 · Sod, J. Comput. Phys. 27 (1978) 1-31 -- shock tube
 
 ### E17 — Shallow water 1D/2D
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions.py::test_audit_physics_shallow_water_2d_geostrophic_balance_gives_zero_residual`; `PINNeAPPle/tests/test_manufactured_solutions.py::test_audit_physics_shallow_water_2d_wrong_solution_gives_nonzero_residual`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_shallow_water_fv.py::test_ritter_dry_bed_dam_break`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Toro, Shock-Capturing Methods for Free-Surface Shallow Flows, Wiley, 2001
 
@@ -432,7 +463,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Biot, General theory of three-dimensional consolidation, J. Appl. Phys. 12 (1941) 155-164
 
 ### E27 — Maxwell TE
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_maxwell_te_plane_wave`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Jackson, Classical Electrodynamics, 3rd ed., Wiley, 1999
 
@@ -466,7 +498,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Heston, A closed-form solution for options with stochastic volatility, Rev. Financ. Stud. 6(2) (1993) 327-343
 
 ### E33 — Opinion dynamics (continuum Hegselmann-Krause)
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_opinion_dynamics_stationary_kink`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Hegselmann & Krause, Opinion dynamics and bounded confidence, JASSS 5(3) (2002)
 
@@ -478,7 +511,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 ### E35 — Circular restricted three-body problem (planar, synodic)
 - **Estado:** ✅ validado
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l1_l2_l3_equilibria_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_nbody_rebound.py::test_cr3bp_l4_stays_fixed_in_rotating_frame`
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l1_l2_l3_equilibria_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l4_equilibrium_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_nbody_rebound.py::test_cr3bp_l4_stays_fixed_in_rotating_frame`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Szebehely, Theory of Orbits: The Restricted Problem of Three Bodies, Academic Press, 1967
 
@@ -495,14 +528,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Clohessy & Wiltshire, Terminal guidance system for satellite rendezvous, J. Aerosp. Sci. 27(9) (1960) 653-658
 
 ### E38 — Euler rigid-body attitude
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_wrong_solution_gives_nonzero_residual`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_exact_gives_near_zero_residual`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Markley & Crassidis, Fundamentals of Spacecraft Attitude Determination and Control, Springer, 2014
 
 ### E39 — Lane-Emden polytrope
 - **Estado:** ✅ validado
-- **Evidência:** `PINNeAPPle/tests/test_lane_emden_numerical_validation.py::test_lane_emden_astrophysically_standard_n_matches_published_tables`; `PINNeAPPle/tests/test_lane_emden_numerical_validation.py::test_lane_emden_integrator_matches_closed_form`; `PINNeAPPle/tests/test_pdb_benchmark_catalog.py::test_lane_emden_benchmark_reference_source_cites_published_table`
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n0_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n1_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_lane_emden_numerical_validation.py::test_lane_emden_astrophysically_standard_n_matches_published_tables` (+2)
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Chandrasekhar, An Introduction to the Study of Stellar Structure, 1939 · Hansen, Kawaler & Trimble, Stellar Interiors, 2nd ed., Springer, 2004 (Table 4.1)
 
@@ -519,12 +552,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Misner, Thorne & Wheeler, Gravitation, W. H. Freeman, 1973
 
 ### E42 — SIR epidemic
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_sir_logistic_limit`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Kermack & McKendrick, Proc. R. Soc. A 115 (1927) 700-721
 
 ### E43 — Pharmacokinetics two-compartment
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_pk_two_compartment_eigen_solution`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Gibaldi & Perrier, Pharmacokinetics, 2nd ed., Marcel Dekker, 1982
 
@@ -565,7 +600,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 ### E50 — DNV-RP-O501 erosion (straight pipe and bend)
 - **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle-CFD/tests/test_e01_descricao_problema.py::test_dureza_brinell_entra_na_ficha_e_libera_o_ecrc`; `PINNeAPPle-CFD/tests/test_e01_descricao_problema.py::test_ficha_aceita_pelo_e2`; `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_ca_e2_03_sem_velocidade_nem_vazao_nao_gera_caso` (+35)
+- **Evidência:** `PINNeAPPle-CFD/tests/test_e01_descricao_problema.py::test_dureza_brinell_entra_na_ficha_e_libera_o_ecrc`; `PINNeAPPle-CFD/tests/test_e01_descricao_problema.py::test_ficha_aceita_pelo_e2`; `PINNeAPPle-CFD/tests/test_e02_modelo_matematico.py::test_ca_e2_03_sem_velocidade_nem_vazao_nao_gera_caso` (+43)
 - **Código:** `PINNeAPPle-CFD/pinneapple_cfd/etapas/e02_modelo_matematico/erosao.py`
 - **Referências adicionadas:** DNV-RP-O501 rev. 4.2, Managing Sand Production and Erosion, 2007/2011
 
@@ -941,12 +976,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Equações:** E32
 
 ### P6.7 — Multidisciplinary: opinion_dynamics_2d
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_opinion_dynamics_stationary_kink`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E33
 
 ### P6.8 — Multidisciplinary: pk_two_compartment
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch2.py::test_pk_two_compartment_eigen_solution`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E43
 
@@ -957,7 +994,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 ### P7.1 — Astro / space: cr3bp_planar_synodic
 - **Estado:** ✅ validado
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l1_l2_l3_equilibria_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_nbody_rebound.py::test_cr3bp_l4_stays_fixed_in_rotating_frame`
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l1_l2_l3_equilibria_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_cr3bp_l4_equilibrium_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_nbody_rebound.py::test_cr3bp_l4_stays_fixed_in_rotating_frame`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E35
 
@@ -968,14 +1005,14 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Equações:** E34
 
 ### P7.3 — Astro / space: lane_emden_polytrope
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n0_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n1_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_wrong_solution_gives_nonzero_residual` (+7)
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n0_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_lane_emden_n1_exact_gives_near_zero_residual`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E39
 
 ### P7.4 — Astro / space: nfw_dark_matter_potential
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_nfw_potential_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_nfw_potential_wrong_solution_gives_nonzero_residual`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_nfw_potential_exact_gives_near_zero_residual`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E2
 
@@ -1009,8 +1046,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Equações:** E37
 
 ### P7.10 — Astro / space: spacecraft_attitude_euler_rotation
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_exact_gives_near_zero_residual`; `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_wrong_solution_gives_nonzero_residual`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_astrophysics_validation.py::test_spacecraft_attitude_exact_gives_near_zero_residual`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E38
 

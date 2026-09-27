@@ -44,26 +44,25 @@ def tvd_advection_rhs(f: np.ndarray, v: float, dz: float) -> np.ndarray:
     N = f.size
     flux = np.zeros(N + 1)
     eps = 1e-12
-
+    d = f[1:] - f[:-1]  # d[k] = f[k+1] - f[k]: the jump across face k+1/2
+    safe = np.where(np.abs(d) > eps, d, eps)
+    r = np.zeros(N - 1)
+    # The limiter ratio must use the slope on the UPWIND side of each face (Sweby, SIAM J.
+    # Numer. Anal. 21(5) 1984): r_{k+1/2} = (f_k - f_{k-1}) / (f_{k+1} - f_k) for v > 0. An
+    # earlier version used the downwind slope in both branches, which is not TVD (a square
+    # wave overshot by 22 %; tests/test_solver_exact_solutions_batch3.py). Faces next to the
+    # domain boundary have no upwind slope and fall back to first-order upwind (phi = 0).
     if v >= 0:
-        df_up = f[1:] - f[:-1]                       # (N-1,), df_up[i] = f[i]-f[i-1] for i=1..N-1
-        df_down = np.empty(N - 1)
-        df_down[:-1] = df_up[1:]                      # f[i+1]-f[i] for i=1..N-2
-        df_down[-1] = df_up[-1]                        # last interior point: no downstream neighbor
-        r = df_down / (df_up + eps * np.sign(df_up + eps))
+        r[1:] = d[:-1] / safe[1:]
         phi = van_leer_limiter(r)
-        flux[1:N] = v * (f[:-1] + 0.5 * phi * df_up)
-        flux[0] = v * f[0]
-        flux[N] = v * f[-1]
+        phi[0] = 0.0
+        flux[1:N] = v * (f[:-1] + 0.5 * phi * d)
     else:
-        df_up = f[1:] - f[:-1]                        # (N-1,), df_up[i] = f[i+1]-f[i] for i=0..N-2
-        df_down = np.empty(N - 1)
-        df_down[1:] = df_up[:-1]                       # f[i]-f[i-1] for i=1..N-2
-        df_down[0] = df_up[0]
-        r = df_down / (df_up + eps * np.sign(df_up + eps))
+        r[:-1] = d[1:] / safe[:-1]
         phi = van_leer_limiter(r)
-        flux[1:N] = v * (f[1:] - 0.5 * phi * df_up)
-        flux[0] = v * f[0]
-        flux[N] = v * f[-1]
+        phi[-1] = 0.0
+        flux[1:N] = v * (f[1:] - 0.5 * phi * d)
+    flux[0] = v * f[0]
+    flux[N] = v * f[-1]
 
     return -(flux[1:] - flux[:-1]) / dz

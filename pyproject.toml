@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pinneapple"
-version = "0.6.0"
+version = "0.6.1"
 description = "PINNeAPPle: Physics-Informed Neural Networks platform — PDE problem design, PINN/operator/GNN models, UQ, digital twins, meta-learning, active learning, validation, and REST serving."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -44,6 +44,10 @@ dependencies = [
   "xarray",
   "zarr"
 ]
+
+[project.scripts]
+# Drop-in CalculiX executable backed by a PINN/surrogate (falls back to ccx outside its envelope)
+pinneapple-ccx = "pinneapple_simulation.external_solvers.calculix.virtual_ccx:main"
 
 [project.optional-dependencies]
 # Geometry backends
