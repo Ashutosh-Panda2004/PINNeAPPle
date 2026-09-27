@@ -65,6 +65,116 @@
    "rel_l2": 0.10628896893815307,
    "seconds": 2098.4,
    "n_params": 5163
+  },
+  {
+   "problem": "sod",
+   "variant": "bfgs",
+   "adam_iters": 2000,
+   "error_after_adam": 0.1002076533508865,
+   "iters": 1000,
+   "fraction_tau_below_1": 0.0,
+   "loss": 0.0015242531826977924,
+   "rel_l2": 0.3971321702440931,
+   "seconds": 18385.3,
+   "n_params": 5163
+  },
+  {
+   "problem": "sod",
+   "variant": "ssbfgs",
+   "adam_iters": 2000,
+   "error_after_adam": 0.1002076533508865,
+   "iters": 1000,
+   "fraction_tau_below_1": 0.0,
+   "loss": 0.0015242531826977924,
+   "rel_l2": 0.3971321702440931,
+   "seconds": 4613.7,
+   "n_params": 5163
+  },
+  {
+   "problem": "sod",
+   "variant": "ssbroyden",
+   "adam_iters": 2000,
+   "error_after_adam": 0.1002076533508865,
+   "iters": 1000,
+   "fraction_tau_below_1": 1.0,
+   "loss": 0.0005869803717414909,
+   "rel_l2": 0.4839951270702619,
+   "seconds": 630.8,
+   "n_params": 5163
+  },
+  {
+   "problem": "helmholtz",
+   "variant": "adam",
+   "adam_iters": 2000,
+   "error_after_adam": 4.657362526955864,
+   "iters": 1000,
+   "loss": 587.0576190028843,
+   "rel_l2": 3.005507982190164,
+   "seconds": 8784.5,
+   "n_params": 2911
+  },
+  {
+   "problem": "helmholtz",
+   "variant": "bfgs",
+   "adam_iters": 2000,
+   "error_after_adam": 4.657362526955864,
+   "iters": 1000,
+   "fraction_tau_below_1": 0.0,
+   "loss": 2066.4603148942333,
+   "rel_l2": 8.936616730504928,
+   "seconds": 3016.5,
+   "n_params": 2911
+  },
+  {
+   "problem": "helmholtz",
+   "variant": "ssbfgs",
+   "adam_iters": 2000,
+   "error_after_adam": 4.657362526955864,
+   "iters": 1000,
+   "fraction_tau_below_1": 0.0,
+   "loss": 2066.4603148942333,
+   "rel_l2": 8.936616730504928,
+   "seconds": 220.4,
+   "n_params": 2911
+  },
+  {
+   "problem": "pkpd",
+   "variant": "adam",
+   "rel_l2": 0.99161,
+   "adam_iters": 2000,
+   "iters": 1000,
+   "note": "run of 2026-09-25; full record lost with the wiped $TMPDIR worktree, rel_l2 from the run log"
+  },
+  {
+   "problem": "pkpd",
+   "variant": "bfgs",
+   "rel_l2": 0.99744,
+   "adam_iters": 2000,
+   "iters": 1000,
+   "note": "run of 2026-09-25; full record lost with the wiped $TMPDIR worktree, rel_l2 from the run log"
+  },
+  {
+   "problem": "pkpd",
+   "variant": "ssbfgs",
+   "rel_l2": 0.9978,
+   "adam_iters": 2000,
+   "iters": 1000,
+   "note": "run of 2026-09-25; full record lost with the wiped $TMPDIR worktree, rel_l2 from the run log"
+  },
+  {
+   "problem": "pkpd",
+   "variant": "ssbroyden",
+   "rel_l2": 0.98806,
+   "adam_iters": 2000,
+   "iters": 1000,
+   "note": "run of 2026-09-25; full record lost with the wiped $TMPDIR worktree, rel_l2 from the run log"
   }
- ]
+ ],
+ "summary": {
+  "pkpd": "plain residual PINN fails with every optimizer (rel-L2 ~0.99); upstream uses Chebyshev features + output transform",
+  "burgers": "quasi-Newton lowers the residual by 5 orders (SSBroyden 2.8e-6 vs Adam 0.17) but not the error (0.30 vs Adam 0.28): the strong-form residual at a shock admits wrong smooth solutions; upstream uses Roe/entropy residuals",
+  "sod": "same pattern: SSBroyden has the lowest loss (5.9e-4) and the highest error (0.48); Adam 0.11; upstream uses HLLC fluxes",
+  "helmholtz": "not converged with any optimizer in this budget (Adam rel-L2 3.0, BFGS 8.9, loss ~1e3): the a1=1, a2=4 case is the gradient-pathology example of Wang, Teng & Perdikaris 2021; upstream adds periodic Fourier features, RAD and 1e5 iterations; SSBFGS/SSBroyden runs stopped",
+  "conclusion": "on these four problems a better optimizer alone does not fix a formulation that is wrong for the physics (shocks, stiffness, multi-scale); the optimizer benefit shows on smooth problems (1D Poisson: 1e-8 vs Adam 1e-4)"
+ }
 }
