@@ -72,8 +72,8 @@ def _rbf_laplacian_mq(centres: torch.Tensor, eps: float) -> torch.Tensor:
     r2 = ((centres.unsqueeze(1) - centres.unsqueeze(0)) ** 2).sum(-1)
     e2 = eps ** 2
     phi = torch.sqrt(1.0 + e2 * r2)
-    # Δ_x φ(||x-c||) = e²(d + (d-2)*e²r²) / φ³
-    lap = e2 * (d + (d - 2) * e2 * r2) / phi ** 3
+    # Δ_x φ(||x-c||) = φ'' + (d-1) φ'/r = e²(d + (d-1)*e²r²) / φ³
+    lap = e2 * (d + (d - 1) * e2 * r2) / phi ** 3
     return lap
 
 
@@ -197,7 +197,7 @@ class RBFCollocationSolver(SolverBase):
         Nb = boundary_pts.shape[0]
 
         # Collocation matrix A
-        A = torch.zeros(N, N, device=all_pts.device)
+        A = torch.zeros(N, N, dtype=all_pts.dtype, device=all_pts.device)
 
         # Interior rows: -coeff·Δφ + k²·φ  at interior centres
         Lap = self._lap_matrix(all_pts)   # (N,N): Lap[i,j] = Δ_x φ(x_i, c_j)
@@ -209,21 +209,17 @@ class RBFCollocationSolver(SolverBase):
         A[Ni:, :] = Phi[Ni:, :]
 
         # RHS
-        rhs = torch.zeros(N, device=all_pts.device)
+        rhs = torch.zeros(N, dtype=all_pts.dtype, device=all_pts.device)
         rhs[:Ni] = source
 
-        # Dirichlet BC values
-        from pinneapple_physics.pde_environment.conditions import DirichletBC
-        for cond in spec.conditions:
-            if isinstance(cond, DirichletBC):
-                val_fn = cond.value_fn
-                vals = (val_fn(boundary_pts) if callable(val_fn)
-                        else torch.full((Nb,), float(val_fn), device=all_pts.device))
-                rhs[Ni:] = vals
-                break
+        # Dirichlet BC values (the first dirichlet condition covers all boundary nodes)
+        from . import _bc
+        for cond in _bc.dirichlet_conditions(spec):
+            rhs[Ni:] = _bc.values(cond, boundary_pts).to(rhs.dtype)
+            break
 
         # Regularised solve
-        Areg = A + self.reg * torch.eye(N, device=A.device)
+        Areg = A + self.reg * torch.eye(N, dtype=A.dtype, device=A.device)
         coeffs = torch.linalg.solve(Areg, rhs)
 
         # Evaluate solution at all nodes

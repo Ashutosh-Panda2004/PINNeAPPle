@@ -321,21 +321,11 @@ class FEMSolver(SolverBase):
             k2     = float(params.get("k",      0.0)) ** 2
             K, f = _assemble_poisson(nodes, elems, coeff, k2, source)
 
-        # Apply boundary conditions
-        from pinneapple_physics.pde_environment.conditions import DirichletBC
-        for cond in conditions:
-            if not isinstance(cond, DirichletBC):
-                continue
-            sel = cond.selector
-            if isinstance(sel, str) and sel in edge_map:
-                dofs = edge_map[sel]
-            elif callable(sel):
-                mask = sel(nodes)
-                dofs = torch.where(mask)[0]
-            else:
-                continue
-            val_fn = cond.value_fn
-            vals = val_fn(nodes[dofs]) if callable(val_fn) else torch.full((len(dofs),), float(val_fn))
+        # Apply boundary conditions (ConditionSpec kind="dirichlet"; tags left/right/bottom/top/boundary)
+        from . import _bc
+        for cond in _bc.dirichlet_conditions(spec):
+            dofs = _bc.select(cond, nodes, edges=edge_map, boundary=_bc.boundary_rect(nodes, edge_map))
+            vals = _bc.values(cond, nodes[dofs])
             K, f = _apply_dirichlet(K, f, dofs, vals.to(nodes.device))
 
         u = self._linear_solve(K, f)

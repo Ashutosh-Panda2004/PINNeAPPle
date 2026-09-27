@@ -8,10 +8,10 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 | Categoria | ✅ | 🟡 | ⚪ |
 |---|---|---|---|
-| A. Solvers (S) | 11 | 12 | 3 |
+| A. Solvers (S) | 14 | 10 | 2 |
 | B. Métodos de treino (T) | 1 | 12 | 9 |
-| C. Equações físicas (E) | 36 | 21 | 8 |
-| D. Problemas físicos (P) | 27 | 8 | 31 |
+| C. Equações físicas (E) | 42 | 21 | 2 |
+| D. Problemas físicos (P) | 27 | 10 | 29 |
 
 ## A. Solvers (S)
 
@@ -22,8 +22,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations, SIAM, 2007
 
 ### S2 — Finite elements (linear) + nonlinear beam FEM
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_unknown_solver_family_raises`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_q1_reproduces_quadratic_and_converges_second_order_on_harmonic`
 - **Código:** `pinneapple_simulation/numerical_solvers/fem.py`, `pinneapple_simulation/numerical_solvers/nonlinear_beam_fem.py`
 - **Referências adicionadas:** Hughes, The Finite Element Method: Linear Static and Dynamic FEA, Dover, 2000 · Zienkiewicz, Taylor & Zhu, The Finite Element Method: Its Basis and Fundamentals, 7th ed., 2013
 
@@ -53,7 +53,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Monaghan, Smoothed particle hydrodynamics, Rep. Prog. Phys. 68 (2005) 1703
 
 ### S7 — Meshfree RBF collocation (Kansa)
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_kansa_converges_to_exact_solution`
 - **Código:** `pinneapple_simulation/numerical_solvers/meshfree.py`
 - **Referências adicionadas:** Kansa, Multiquadrics, Comput. Math. Appl. 19(8-9) (1990) 147-161
 
@@ -94,8 +95,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Timoshenko & Goodier, Theory of Elasticity, 3rd ed., McGraw-Hill, 1970 · LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations, SIAM, 2007
 
 ### S14 — Eddy current FDM
-- **Estado:** 🟡 testado, sem referência
-- **Evidência:** `PINNeAPPle/tests/test_inspection.py::test_eddy_current_synthetic_matches_solver_convention`; `PINNeAPPle/tests/test_inspection.py::test_train_eddy_current_smoke`
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_eddy_current_manufactured_solution_second_order`
 - **Código:** `pinneapple_simulation/numerical_solvers/eddy_current_fdm.py`
 - **Referências adicionadas:** Jackson, Classical Electrodynamics, 3rd ed., Wiley, 1999
 
@@ -313,13 +314,13 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 ### E1 — Laplace
 - **Estado:** ✅ validado
-- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_default_grad_method_autograd_unchanged_manufactured_solution`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_manufactured_solutions.py::test_audit_physics_laplace_2d_exact_solution_gives_zero_residual` (+2)
+- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_default_grad_method_autograd_unchanged_manufactured_solution`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_manufactured_solutions.py::test_audit_physics_laplace_2d_exact_solution_gives_zero_residual` (+3)
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
 ### E2 — Poisson
 - **Estado:** ✅ validado
-- **Evidência:** `PINNeAPPle/tests/pinneapple_solvers/test_fdm_robin.py::test_robin_poisson_matches_analytical_linear_profile`; `PINNeAPPle/tests/test_codegen.py::test_fdm_poisson_2d_matches_manufactured_solution`
+- **Evidência:** `PINNeAPPle/tests/pinneapple_solvers/test_fdm_robin.py::test_robin_poisson_matches_analytical_linear_profile`; `PINNeAPPle/tests/test_codegen.py::test_fdm_poisson_2d_matches_manufactured_solution`; `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_q1_reproduces_quadratic_and_converges_second_order_on_harmonic` (+1)
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Evans, Partial Differential Equations, 2nd ed., AMS, 2010
 
@@ -396,7 +397,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Darcy, Les fontaines publiques de la ville de Dijon, 1856 · Takamoto et al., PDEBench, arXiv:2210.07182 (Darcy 2D benchmark)
 
 ### E15 — Buckley-Leverett two-phase
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_buckley_leverett_layered_reservoir`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Buckley & Leverett, Mechanism of fluid displacement in sands, Trans. AIME 146 (1942) 107-116
 
@@ -431,7 +433,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Timoshenko & Goodier, Theory of Elasticity, 3rd ed., McGraw-Hill, 1970
 
 ### E21 — Neo-Hookean hyperelasticity
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_neo_hookean_total_lagrangian_manufactured_body_force`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Holzapfel, Nonlinear Solid Mechanics, Wiley, 2000
 
@@ -448,7 +451,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Timoshenko & Woinowsky-Krieger, Theory of Plates and Shells, 2nd ed., McGraw-Hill, 1959
 
 ### E24 — Thermoelasticity
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_thermoelasticity_free_thermal_expansion`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Boley & Weiner, Theory of Thermal Stresses, Wiley, 1960
 
@@ -458,7 +462,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Bourdin, Francfort & Marigo, J. Mech. Phys. Solids 48 (2000) 797-826 · Miehe, Hofacker & Welschinger, Comput. Methods Appl. Mech. Eng. 199 (2010) 2765-2778
 
 ### E26 — Biot poroelasticity
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_biot_terzaghi_consolidation_mode`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Biot, General theory of three-dimensional consolidation, J. Appl. Phys. 12 (1941) 155-164
 
@@ -493,7 +498,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Black & Scholes, The pricing of options and corporate liabilities, J. Polit. Econ. 81(3) (1973) 637-654
 
 ### E32 — Heston
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_S_times_v`; `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_v_squared`
 - **Código:** `pinneapple_physics/pinn_solver/compiler/compile.py`
 - **Referências adicionadas:** Heston, A closed-form solution for options with stochastic volatility, Rev. Financ. Stud. 6(2) (1993) 327-343
 
@@ -672,7 +678,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Bell, Wronski, Quoilin & Lemort, CoolProp, Ind. Eng. Chem. Res. 53(6) (2014) 2498-2508
 
 ### E62 — Compressor similarity map
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_required_speed_matches_closed_form`; `PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_similarity_map_affinity_laws_are_exact_below_reference_mach`
 - **Código:** `pinneapple_systems/process_components/similarity_map.py`
 - **Referências no código:** PennWell 2003
 - **Referências adicionadas:** Dixon & Hall, Fluid Mechanics and Thermodynamics of Turbomachinery, 2014
@@ -809,7 +816,9 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Equações:** E20
 
 ### P2.8 — Solids: thermoelasticity_2d
-- **Estado:** ⚪ sem teste
+- **Estado:** 🟡 testado, sem referência
+- **Revisão manual:** only the thermoelasticity_2d residual is validated (E24, free thermal expansion); the preset's own geometry/BCs are not compared with a reference
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_thermoelasticity_free_thermal_expansion`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E24
 
@@ -971,7 +980,9 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Equações:** E6
 
 ### P6.6 — Multidisciplinary: heston_pde_2d
-- **Estado:** ⚪ sem teste
+- **Estado:** 🟡 testado, sem referência
+- **Revisão manual:** only the heston_pde_2d residual is validated (E32, exact claim prices); the preset's own domain/terminal/boundary conditions are not compared with a reference
+- **Evidência:** `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_S_times_v`; `PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_v_squared`
 - **Código:** `pinneapple_physics/pde_environment/presets/`
 - **Equações:** E32
 
