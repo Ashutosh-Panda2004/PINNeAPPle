@@ -228,8 +228,9 @@ class GradNormBalancer:
             grads = torch.autograd.grad(
                 loss, params, retain_graph=True, create_graph=False, allow_unused=True
             )
-            norms = [g.norm() for g in grads if g is not None]
-            return float(sum(norms).item()) if norms else 1.0
+            sq = [g.pow(2).sum() for g in grads if g is not None]
+            # Global L2 norm over the shared parameters (not the sum of per-tensor norms).
+            return float(torch.sqrt(sum(sq)).item()) if sq else 1.0
         except Exception:
             return 1.0
 
@@ -275,8 +276,15 @@ class GradNormBalancer:
             relative_rate = loss_ratios[name] / (mean_loss_ratio + 1e-12)
             target_norm = mean_norm * (relative_rate ** self.alpha)
             if gn > 1e-10:
+                # ``gn`` is the norm of the *weighted* loss gradient, i.e. w_i * ||grad L_i||.
+                # The weight that makes the weighted norm hit the target is therefore
+                # w_i * target / gn (= target / ||grad L_i||). Using ``target / gn`` alone
+                # would divide by the current weight twice: the fixed point becomes
+                # w_i^2 * ||grad L_i|| = target (square-root balancing) and consecutive
+                # updates oscillate around it.
+                w = self._weights.get(name, 1.0)
                 self._weights[name] = float(
-                    max(self.config.clip_min, min(self.config.clip_max, target_norm / gn))
+                    max(self.config.clip_min, min(self.config.clip_max, w * target_norm / gn))
                 )
             self._history[name].append(self._weights[name])
 
