@@ -20,8 +20,11 @@ def poisson_periodic_fft(f: torch.Tensor, *, Lx: float = 1.0, Ly: float = 1.0, e
     f: (H,W)
     """
     H, W = f.shape
-    fx = torch.fft.fftfreq(W, d=Lx / W).to(f.device)
-    fy = torch.fft.fftfreq(H, d=Ly / H).to(f.device)
+    # wavenumbers in the input's precision: torch's fftfreq defaults to float32, which capped a
+    # float64 solve at ~1e-7 relative accuracy
+    real = f.real.dtype if torch.is_complex(f) else f.dtype
+    fx = torch.fft.fftfreq(W, d=Lx / W, dtype=real, device=f.device)
+    fy = torch.fft.fftfreq(H, d=Ly / H, dtype=real, device=f.device)
     kx2 = (2 * torch.pi * fx) ** 2
     ky2 = (2 * torch.pi * fy) ** 2
     KX2, KY2 = torch.meshgrid(kx2, ky2, indexing="xy")

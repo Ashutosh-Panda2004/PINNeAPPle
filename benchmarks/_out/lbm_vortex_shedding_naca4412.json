@@ -1,0 +1,20 @@
+{
+ "case": "naca4412",
+ "St": 0.2067956729076523,
+ "reference_St": null,
+ "rel_diff_vs_reference": null,
+ "length_scale_lattice": 27.361611466053496,
+ "u_in": 0.1,
+ "Re": 500.0,
+ "omega": 1.824817518248175,
+ "grid": [
+  560,
+  240
+ ],
+ "steps": 20000,
+ "periods_analysed": 7.557876229776005,
+ "probe_uy_amplitude": 0.07265738717246689,
+ "seconds": 240.8,
+ "reference_note": "no single published value; bluff-body yardstick St ~ 0.15-0.2 on c*sin(alpha)",
+ "blockage": null
+}

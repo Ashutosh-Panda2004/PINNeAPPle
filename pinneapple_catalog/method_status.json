@@ -1304,8 +1304,10 @@
   },
   "S11": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_tvd_advection_second_order_on_smooth_data_and_no_new_extrema"
+   ],
+   "status": "validated"
   },
   "S12": {
    "other_tests": [],
@@ -1314,8 +1316,11 @@
   },
   "S13": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_is_second_order",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_matches_textbook_deflections"
+   ],
+   "status": "validated"
   },
   "S14": {
    "other_tests": [
@@ -1561,8 +1566,10 @@
   },
   "S3": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_fvm_diffusion_decays_the_first_mode_at_the_exact_rate"
+   ],
+   "status": "validated"
   },
   "S4": {
    "other_tests": [
@@ -1573,7 +1580,8 @@
    "override": "the hit compares gradient backends with each other (consistency), not the spectral solver with an independent reference",
    "reference_tests": [
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d",
-    "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d"
+    "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_spectral_poisson_is_exact_for_a_fourier_mode"
    ],
    "status": "tested"
   },
@@ -1818,6 +1826,6 @@
   }
  },
  "rule": "validated = a test exercising the item compares against an independent reference (closed form, manufactured solution, published/tabulated value)",
- "test_files_scanned": 166,
- "test_functions_scanned": 1663
+ "test_files_scanned": 168,
+ "test_functions_scanned": 1672
 }

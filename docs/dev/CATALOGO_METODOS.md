@@ -8,7 +8,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 | Categoria | ✅ | 🟡 | ⚪ |
 |---|---|---|---|
-| A. Solvers (S) | 7 | 13 | 6 |
+| A. Solvers (S) | 10 | 13 | 3 |
 | B. Métodos de treino (T) | 1 | 12 | 9 |
 | C. Equações físicas (E) | 36 | 21 | 8 |
 | D. Problemas físicos (P) | 27 | 8 | 31 |
@@ -28,14 +28,15 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Hughes, The Finite Element Method: Linear Static and Dynamic FEA, Dover, 2000 · Zienkiewicz, Taylor & Zhu, The Finite Element Method: Its Basis and Fundamentals, 7th ed., 2013
 
 ### S3 — Finite volumes
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_fvm_diffusion_decays_the_first_mode_at_the_exact_rate`
 - **Código:** `pinneapple_simulation/numerical_solvers/fvm.py`
 - **Referências adicionadas:** Versteeg & Malalasekera, An Introduction to Computational Fluid Dynamics: The Finite Volume Method, 2nd ed., Pearson, 2007 · LeVeque, Finite Volume Methods for Hyperbolic Problems, Cambridge University Press, 2002
 
 ### S4 — Spectral (Fourier pseudo-spectral)
 - **Estado:** 🟡 testado, sem referência
 - **Revisão manual:** the hit compares gradient backends with each other (consistency), not the spectral solver with an independent reference
-- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d`
+- **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d`; `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_spectral_poisson_is_exact_for_a_fourier_mode`
 - **Código:** `pinneapple_simulation/numerical_solvers/spectral.py`
 - **Referências adicionadas:** Trefethen, Spectral Methods in MATLAB, SIAM, 2000 · Canuto, Hussaini, Quarteroni & Zang, Spectral Methods: Fundamentals in Single Domains, Springer, 2006
 
@@ -77,7 +78,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Hairer & Wanner, Solving Ordinary Differential Equations II: Stiff and DAE Problems, 2nd ed., Springer, 1996
 
 ### S11 — TVD advection
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_tvd_advection_second_order_on_smooth_data_and_no_new_extrema`
 - **Código:** `pinneapple_simulation/numerical_solvers/tvd_advection.py`
 - **Referências adicionadas:** Harten, High resolution schemes for hyperbolic conservation laws, J. Comput. Phys. 49 (1983) 357-393 · Sweby, High resolution schemes using flux limiters, SIAM J. Numer. Anal. 21(5) (1984) 995-1011
 
@@ -87,7 +89,8 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Peskin, The immersed boundary method, Acta Numerica 11 (2002) 479-517 · Mittal & Iaccarino, Immersed boundary methods, Annu. Rev. Fluid Mech. 37 (2005) 239-261
 
 ### S13 — Beam BVP FDM / 3D elasticity FDM
-- **Estado:** ⚪ sem teste
+- **Estado:** ✅ validado
+- **Evidência:** `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_is_second_order`; `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_beam_bvp_matches_textbook_deflections`
 - **Código:** `pinneapple_simulation/numerical_solvers/beam_bvp_fdm.py`, `pinneapple_simulation/numerical_solvers/elasticity3d_fdm.py`
 - **Referências adicionadas:** Timoshenko & Goodier, Theory of Elasticity, 3rd ed., McGraw-Hill, 1970 · LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations, SIAM, 2007
 

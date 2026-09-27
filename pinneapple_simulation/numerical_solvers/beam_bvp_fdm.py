@@ -121,46 +121,60 @@ def second_derivative(f: np.ndarray, dz: float) -> np.ndarray:
     return d2f
 
 
-def _build_simply_supported(n: int, dz: float, q_over_EI: float):
+# Boundary conditions by the ghost-node (image) method: the 5-point fourth-derivative stencil is
+# applied up to the first/last interior node, with ghost values eliminated through the boundary
+# conditions, which keeps the whole scheme second-order accurate. The previous version imposed
+# w' = 0 with a one-sided first-order difference and w'' = 0 one node away from the boundary,
+# which made every deflection only first-order accurate (-4.8 %, -2.4 %, -1.2 % at nx = 100, 200,
+# 400 against the closed forms; tests/test_solver_exact_solutions_batch3.py).
+def _pentadiagonal(n: int, dz: float, q_over_EI: float):
     A = sparse.lil_matrix((n, n)); rhs = np.full(n, q_over_EI)
     c = 1.0 / dz ** 4
     for i in range(2, n - 2):
         A[i, i - 2] = c; A[i, i - 1] = -4 * c; A[i, i] = 6 * c
         A[i, i + 1] = -4 * c; A[i, i + 2] = c
-    c2 = 1.0 / dz ** 2
-    A[0, 0] = 1.0; rhs[0] = 0.0
-    A[1, 0] = c2; A[1, 1] = -2 * c2; A[1, 2] = c2; rhs[1] = 0.0
-    A[n - 1, n - 1] = 1.0; rhs[n - 1] = 0.0
-    A[n - 2, n - 3] = c2; A[n - 2, n - 2] = -2 * c2; A[n - 2, n - 1] = c2; rhs[n - 2] = 0.0
+    return A, rhs, c
+
+
+def _set_row(A, rhs, i, cols_vals, value):
+    for j, v in cols_vals:
+        A[i, j] = v
+    rhs[i] = value
+
+
+def _build_simply_supported(n: int, dz: float, q_over_EI: float):
+    """w = 0 and w'' = 0 at both ends: ghost w_{-1} = -w_1 (and its mirror at z = L)."""
+    A, rhs, c = _pentadiagonal(n, dz, q_over_EI)
+    N = n - 1
+    _set_row(A, rhs, 0, [(0, 1.0)], 0.0)
+    _set_row(A, rhs, 1, [(0, -4 * c), (1, 5 * c), (2, -4 * c), (3, c)], q_over_EI)
+    _set_row(A, rhs, N, [(N, 1.0)], 0.0)
+    _set_row(A, rhs, N - 1, [(N, -4 * c), (N - 1, 5 * c), (N - 2, -4 * c), (N - 3, c)], q_over_EI)
     return A, rhs
 
 
 def _build_cantilever(n: int, dz: float, q_over_EI: float):
-    A = sparse.lil_matrix((n, n)); rhs = np.full(n, q_over_EI)
-    c = 1.0 / dz ** 4
-    for i in range(2, n - 2):
-        A[i, i - 2] = c; A[i, i - 1] = -4 * c; A[i, i] = 6 * c
-        A[i, i + 1] = -4 * c; A[i, i + 2] = c
-    c1 = 1.0 / dz; c2 = 1.0 / dz ** 2; c3 = 1.0 / dz ** 3
-    A[0, 0] = 1.0; rhs[0] = 0.0
-    A[1, 0] = -c1; A[1, 1] = c1; rhs[1] = 0.0
-    A[n - 2, n - 3] = c2; A[n - 2, n - 2] = -2 * c2; A[n - 2, n - 1] = c2; rhs[n - 2] = 0.0
-    A[n - 1, n - 4] = -c3; A[n - 1, n - 3] = 3 * c3; A[n - 1, n - 2] = -3 * c3; A[n - 1, n - 1] = c3
-    rhs[n - 1] = 0.0
+    """Clamped at z = 0 (ghost w_{-1} = w_1); free at z = L: w''(L) = w'''(L) = 0 with ghosts
+    w_{N+1} = 2 w_N - w_{N-1} and w_{N+2} = 4 w_N - 4 w_{N-1} + w_{N-2}."""
+    A, rhs, c = _pentadiagonal(n, dz, q_over_EI)
+    N = n - 1
+    _set_row(A, rhs, 0, [(0, 1.0)], 0.0)
+    _set_row(A, rhs, 1, [(0, -4 * c), (1, 7 * c), (2, -4 * c), (3, c)], q_over_EI)
+    _set_row(A, rhs, N - 1, [(N - 3, c), (N - 2, -4 * c), (N - 1, 5 * c), (N, -2 * c)], q_over_EI)
+    # the ghost-eliminated equation at the free end is the full centred stencil at node N, so it
+    # carries the full load (a half-cell load there drops the tip deflection to first order)
+    _set_row(A, rhs, N, [(N - 2, 2 * c), (N - 1, -4 * c), (N, 2 * c)], q_over_EI)
     return A, rhs
 
 
 def _build_fixed_fixed(n: int, dz: float, q_over_EI: float):
-    A = sparse.lil_matrix((n, n)); rhs = np.full(n, q_over_EI)
-    c = 1.0 / dz ** 4
-    for i in range(2, n - 2):
-        A[i, i - 2] = c; A[i, i - 1] = -4 * c; A[i, i] = 6 * c
-        A[i, i + 1] = -4 * c; A[i, i + 2] = c
-    c1 = 1.0 / dz
-    A[0, 0] = 1.0; rhs[0] = 0.0
-    A[1, 0] = -c1; A[1, 1] = c1; rhs[1] = 0.0
-    A[n - 1, n - 1] = 1.0; rhs[n - 1] = 0.0
-    A[n - 2, n - 2] = -c1; A[n - 2, n - 1] = c1; rhs[n - 2] = 0.0
+    """w = 0 and w' = 0 at both ends: ghost w_{-1} = w_1 (and its mirror at z = L)."""
+    A, rhs, c = _pentadiagonal(n, dz, q_over_EI)
+    N = n - 1
+    _set_row(A, rhs, 0, [(0, 1.0)], 0.0)
+    _set_row(A, rhs, 1, [(0, -4 * c), (1, 7 * c), (2, -4 * c), (3, c)], q_over_EI)
+    _set_row(A, rhs, N, [(N, 1.0)], 0.0)
+    _set_row(A, rhs, N - 1, [(N, -4 * c), (N - 1, 7 * c), (N - 2, -4 * c), (N - 3, c)], q_over_EI)
     return A, rhs
 
 
