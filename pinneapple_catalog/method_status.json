@@ -1577,13 +1577,12 @@
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_grad_method_validation_errors",
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_burgers_1d"
    ],
-   "override": "the hit compares gradient backends with each other (consistency), not the spectral solver with an independent reference",
    "reference_tests": [
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d",
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d",
     "PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_spectral_poisson_is_exact_for_a_fourier_mode"
    ],
-   "status": "tested"
+   "status": "validated"
   },
   "S5": {
    "other_tests": [

@@ -8,7 +8,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 
 | Categoria | ✅ | 🟡 | ⚪ |
 |---|---|---|---|
-| A. Solvers (S) | 10 | 13 | 3 |
+| A. Solvers (S) | 11 | 12 | 3 |
 | B. Métodos de treino (T) | 1 | 12 | 9 |
 | C. Equações físicas (E) | 36 | 21 | 8 |
 | D. Problemas físicos (P) | 27 | 8 | 31 |
@@ -34,8 +34,7 @@ Referências: "no código" = já citadas no docstring do módulo; "adicionadas" 
 - **Referências adicionadas:** Versteeg & Malalasekera, An Introduction to Computational Fluid Dynamics: The Finite Volume Method, 2nd ed., Pearson, 2007 · LeVeque, Finite Volume Methods for Hyperbolic Problems, Cambridge University Press, 2002
 
 ### S4 — Spectral (Fourier pseudo-spectral)
-- **Estado:** 🟡 testado, sem referência
-- **Revisão manual:** the hit compares gradient backends with each other (consistency), not the spectral solver with an independent reference
+- **Estado:** ✅ validado
 - **Evidência:** `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d`; `PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_reaction_diffusion_2d`; `PINNeAPPle/tests/test_solver_exact_solutions_batch3.py::test_spectral_poisson_is_exact_for_a_fourier_mode`
 - **Código:** `pinneapple_simulation/numerical_solvers/spectral.py`
 - **Referências adicionadas:** Trefethen, Spectral Methods in MATLAB, SIAM, 2000 · Canuto, Hussaini, Quarteroni & Zang, Spectral Methods: Fundamentals in Single Domains, Springer, 2006

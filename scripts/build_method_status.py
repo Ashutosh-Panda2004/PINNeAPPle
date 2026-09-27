@@ -67,8 +67,6 @@ def _own_body(block: str) -> str:
 OVERRIDES = {
     "S21": ("tested", "the only 'reference' hit is an OPC-UA live-stream test; no state-estimation "
                       "result is compared with an independent reference"),
-    "S4": ("tested", "the hit compares gradient backends with each other (consistency), "
-                     "not the spectral solver with an independent reference"),
 }
 
 
