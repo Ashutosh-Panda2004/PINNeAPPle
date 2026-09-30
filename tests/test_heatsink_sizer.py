@@ -1,0 +1,138 @@
+"""Tests for the plate-fin heat-sink physics and the HeatSink Sizer app."""
+from __future__ import annotations
+
+import json
+import math
+import os
+import sys
+
+import pytest
+
+from pinneapple_physics.closed_form import plate_fin_heatsink as pfh
+
+APP = os.path.join(os.path.dirname(__file__), "..", "apps", "heatsink_sizer")
+sys.path.insert(0, os.path.abspath(APP))
+
+G80 = pfh.HeatSinkGeometry(0.08, 0.08, 0.006, 30, 0.0012, 0.035)
+
+
+def op(v=2.0, q=100.0):
+    return pfh.OperatingPoint(q, 25.0, v, 0.03, 0.03)
+
+
+# ── closed-form physics ──────────────────────────────────────────────────────
+
+def test_spreading_reduces_to_1d_when_source_covers_base():
+    s = pfh.spreading_resistance(200.0, 0.005, 0.0064, 0.0064, 0.3)
+    assert s["r_max"] == pytest.approx(s["r_1d"], rel=1e-9)
+
+
+def test_spreading_grows_as_source_shrinks():
+    r = [pfh.spreading_resistance(200.0, 0.005, a * a, 0.01, 0.3)["r_max"] for a in (0.08, 0.04, 0.01)]
+    assert r[0] < r[1] < r[2]
+
+
+def test_teertstra_limits():
+    air = pfh.air_properties(25.0)
+    g = pfh.HeatSinkGeometry(0.05, 0.3, 0.005, 40, 0.0005, 0.03)
+    slow = pfh.forced_convection(g, 0.02, air)          # long channel, low flow: fully developed
+    assert slow["nu_b"] == pytest.approx(slow["re_star"] * air["pr"] / 2, rel=0.02)
+    g2 = pfh.HeatSinkGeometry(0.1, 0.02, 0.005, 5, 0.001, 0.03)
+    fast = pfh.forced_convection(g2, 10.0, air)         # short channel, fast flow: developing plate
+    dev = 0.664 * math.sqrt(fast["re_star"]) * air["pr"] ** (1 / 3)
+    assert fast["nu_b"] == pytest.approx(dev, rel=0.10)
+
+
+def test_natural_convection_has_an_optimal_fin_count():
+    r = [pfh.evaluate(pfh.HeatSinkGeometry(0.08, 0.10, 0.005, n, 0.0015, 0.035),
+                      pfh.OperatingPoint(15, 25, 0, 0.03, 0.03))["r_total_k_w"] for n in (4, 9, 20)]
+    assert r[1] < r[0] and r[1] < r[2]      # too few fins: little area; too many: choked flow
+
+
+def test_forced_resistance_falls_and_pressure_drop_rises_with_airflow():
+    a, b = pfh.evaluate(G80, op(1.0)), pfh.evaluate(G80, op(4.0))
+    assert b["r_total_k_w"] < a["r_total_k_w"]
+    assert b["pressure_drop_pa"] > a["pressure_drop_pa"]
+
+
+def test_geometry_errors_are_reported():
+    bad = pfh.HeatSinkGeometry(0.02, 0.08, 0.006, 30, 0.0012, 0.035)
+    with pytest.raises(ValueError, match="do not fit"):
+        pfh.evaluate(bad, op())
+
+
+# ── finite-volume base solve ─────────────────────────────────────────────────
+
+def test_fvm_energy_balance_and_agreement_with_lee():
+    from heatsink_sizer.field import solve_base_field
+    f = solve_base_field(base_width=0.08, base_depth=0.08, base_thickness=0.006, k=209.0,
+                         power_w=100.0, r_fins_k_w=0.2, source_width=0.03, source_depth=0.03)
+    assert f["energy_balance_rel_error"] < 1e-8
+    lee = pfh.spreading_resistance(209.0, 0.006, 0.03 ** 2, 0.08 ** 2, 0.2)["r_max"]
+    assert f["theta_max"] / 100.0 - 0.2 == pytest.approx(lee, rel=0.05)
+
+
+def test_fvm_off_centre_source_moves_hotspot():
+    from heatsink_sizer.field import solve_base_field
+    f = solve_base_field(base_width=0.1, base_depth=0.1, base_thickness=0.004, k=209.0, power_w=50.0,
+                         r_fins_k_w=0.3, source_width=0.02, source_depth=0.02, source_x=0.02, source_y=0.08)
+    x, y = f["hotspot_xy_m"]
+    assert x < 0.04 and y > 0.06
+
+
+# ── engine / sizer / API ─────────────────────────────────────────────────────
+
+def test_evaluate_design_checks_and_band():
+    from heatsink_sizer.engine import DesignInput, OperatingInput, evaluate_design
+    r = evaluate_design(DesignInput(80, 80, 6, 30, 1.2, 35), OperatingInput(100, 25, 2, 30, 30, t_limit_c=70))
+    lo, hi = r["kpis"]["t_source_band_c"]
+    assert lo < r["kpis"]["t_source_max_c"] < hi
+    assert r["verdict"]["status"] == "meets"
+    assert all(c["status"] == "pass" for c in r["checks"])
+
+
+def test_sizer_closed_form_screen_returns_verified_designs():
+    from heatsink_sizer.sizer import SizingRequest, size
+    res = size(SizingRequest(power_w=60, t_limit_c=75, n_candidates=1500, n_verify=6), surrogates={})
+    json.dumps(res)                                   # plain JSON types only (no numpy scalars)
+    assert res["status"] == "ok"
+    assert all(r["meets_requirements"] for r in res["recommendations"])
+    assert res["recommendations"][0]["kpis"]["t_source_band_c"][1] <= 75
+
+
+def test_sizer_reports_infeasible_requests():
+    from heatsink_sizer.sizer import SizingRequest, size
+    res = size(SizingRequest(power_w=400, t_limit_c=30, max_width_mm=40, max_depth_mm=40,
+                             max_height_mm=20, n_candidates=800, n_verify=4), surrogates={})
+    assert res["status"] == "no_feasible_design"
+
+
+def test_api_endpoints():
+    pytest.importorskip("fastapi")
+    pytest.importorskip("httpx")
+    from fastapi.testclient import TestClient
+    from heatsink_sizer.api import app
+    c = TestClient(app)
+    assert c.get("/health").json()["status"] == "ok"
+    assert "al6063" in c.get("/api/meta").json()["materials"]
+    body = {"design": {"base_width_mm": 80, "base_depth_mm": 80, "base_thickness_mm": 6, "n_fins": 30,
+                       "fin_thickness_mm": 1.2, "fin_height_mm": 35},
+            "operating": {"power_w": 100, "air_velocity_m_s": 2}}
+    r = c.post("/api/evaluate", json=body)
+    assert r.status_code == 200 and r.json()["kpis"]["t_source_max_c"] > 25
+    body["design"]["n_fins"] = 80                      # fins no longer fit
+    assert c.post("/api/evaluate", json=body).status_code == 422
+    assert c.get("/").status_code == 200
+
+
+def test_sizer_with_trained_surrogate_if_available():
+    from heatsink_sizer.sizer import SizingRequest, size
+    from heatsink_sizer.surrogate import load_surrogates
+    surs = load_surrogates()
+    if "forced" not in surs:
+        pytest.skip("no trained surrogate artifact")
+    res = size(SizingRequest(power_w=100, t_limit_c=70, n_candidates=20000, n_verify=8), surs)
+    json.dumps(res)
+    assert "surrogate" in res["search"]["screening"]["method"]
+    assert res["status"] == "ok"
+    assert res["search"]["screen_error_on_verified_c"]["mean_abs"] < 2.0

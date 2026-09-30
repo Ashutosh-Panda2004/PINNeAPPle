@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HeatSink Sizer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230b6bcb%22/%3E%3Cpath d=%22M3 12h10M4 4v8M7 4v8M10 4v8M13 4v8%22 stroke=%22white%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo">▦</div>
+    <div>
+      <div class="title">HeatSink Sizer</div>
+      <div class="subtitle">Plate-fin heat sinks, sized and verified by physics</div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="size" class="active">Size</button>
+    <button data-tab="evaluate">Evaluate a design</button>
+    <button data-tab="trust">Model trust</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ───────────── SIZE ───────────── -->
+  <section id="tab-size" class="tab active">
+    <div class="layout">
+      <form id="size-form" class="panel form">
+        <h2>Requirements</h2>
+        <fieldset>
+          <legend>Heat load</legend>
+          <label>Power <span class="u">W</span><input name="power_w" type="number" step="any" value="100" required></label>
+          <label>Max. source temperature <span class="u">°C</span><input name="t_limit_c" type="number" step="any" value="70" required></label>
+          <label>Ambient / inlet air <span class="u">°C</span><input name="t_ambient_c" type="number" step="any" value="25" required></label>
+          <div class="row2">
+            <label>Source width <span class="u">mm</span><input name="source_width_mm" type="number" step="any" value="30" required></label>
+            <label>Source depth <span class="u">mm</span><input name="source_depth_mm" type="number" step="any" value="30" required></label>
+          </div>
+          <label>Interface (TIM) <span class="u">K·mm²/W</span><input name="tim_k_mm2_w" type="number" step="any" value="10"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Cooling</legend>
+          <div class="seg" data-target="size-cooling">
+            <button type="button" data-v="forced" class="on">Fan (ducted)</button>
+            <button type="button" data-v="natural">Natural convection</button>
+          </div>
+          <label class="forced-only">Air velocity <span class="u">m/s</span><input name="air_velocity_m_s" type="number" step="any" value="2"></label>
+          <label class="forced-only">Max. pressure drop <span class="u">Pa, optional</span><input name="max_pressure_drop_pa" type="number" step="any" placeholder="fan limit"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Envelope &amp; manufacturing</legend>
+          <div class="row3">
+            <label>Width <span class="u">mm</span><input name="max_width_mm" type="number" step="any" value="100"></label>
+            <label>Depth <span class="u">mm</span><input name="max_depth_mm" type="number" step="any" value="100"></label>
+            <label>Height <span class="u">mm</span><input name="max_height_mm" type="number" step="any" value="50"></label>
+          </div>
+          <label>Process<select name="process" id="process-select"></select></label>
+          <div class="checks" id="material-checks"></div>
+          <label>Optimise for<select name="objective">
+            <option value="mass">Lowest mass</option>
+            <option value="volume">Smallest volume</option>
+            <option value="temperature">Lowest temperature</option>
+          </select></label>
+        </fieldset>
+        <button class="primary" type="submit">Find designs</button>
+      </form>
+
+      <div class="panel results" id="size-results">
+        <div class="empty">
+          <h3>Size a heat sink in seconds</h3>
+          <p>Enter the heat load, the temperature limit and the space available. Thousands of
+            manufacturable designs are screened by a PINNeAPPle neural surrogate, and every
+            design recommended is re-verified by the physics engine (convection correlations +
+            3D finite-volume conduction), with a pessimistic ±15% convection band.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── EVALUATE ───────────── -->
+  <section id="tab-evaluate" class="tab">
+    <div class="layout">
+      <form id="eval-form" class="panel form">
+        <h2>Design</h2>
+        <fieldset>
+          <legend>Base</legend>
+          <div class="row3">
+            <label>Width <span class="u">mm</span><input name="base_width_mm" type="number" step="any" value="80"></label>
+            <label>Depth <span class="u">mm</span><input name="base_depth_mm" type="number" step="any" value="80"></label>
+            <label>Thickness <span class="u">mm</span><input name="base_thickness_mm" type="number" step="any" value="6"></label>
+          </div>
+          <label>Material<select name="material" id="material-select"></select></label>
+        </fieldset>
+        <fieldset>
+          <legend>Fins</legend>
+          <div class="row3">
+            <label>Count<input name="n_fins" type="number" step="1" value="24"></label>
+            <label>Thickness <span class="u">mm</span><input name="fin_thickness_mm" type="number" step="any" value="1.2"></label>
+            <label>Height <span class="u">mm</span><input name="fin_height_mm" type="number" step="any" value="35"></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Operating point</legend>
+          <label>Power <span class="u">W</span><input name="power_w" type="number" step="any" value="100"></label>
+          <div class="row2">
+            <label>Ambient <span class="u">°C</span><input name="t_ambient_c" type="number" step="any" value="25"></label>
+            <label>Limit <span class="u">°C</span><input name="t_limit_c" type="number" step="any" value="70"></label>
+          </div>
+          <div class="seg" data-target="eval-cooling">
+            <button type="button" data-v="forced" class="on">Fan (ducted)</button>
+            <button type="button" data-v="natural">Natural convection</button>
+          </div>
+          <label class="forced-only">Air velocity <span class="u">m/s</span><input name="air_velocity_m_s" type="number" step="any" value="2"></label>
+          <div class="row2">
+            <label>Source width <span class="u">mm</span><input name="source_width_mm" type="number" step="any" value="30"></label>
+            <label>Source depth <span class="u">mm</span><input name="source_depth_mm" type="number" step="any" value="30"></label>
+          </div>
+          <div class="row2">
+            <label>Source centre x <span class="u">mm, opt.</span><input name="source_x_mm" type="number" step="any" placeholder="centred"></label>
+            <label>Source centre y <span class="u">mm, opt.</span><input name="source_y_mm" type="number" step="any" placeholder="centred"></label>
+          </div>
+          <label>Interface (TIM) <span class="u">K·mm²/W</span><input name="tim_k_mm2_w" type="number" step="any" value="10"></label>
+        </fieldset>
+        <button class="primary" type="submit">Evaluate</button>
+      </form>
+
+      <div class="panel results" id="eval-results">
+        <div class="empty">
+          <h3>Check an existing design</h3>
+          <p>Get the hotspot temperature with its uncertainty band, the thermal-resistance
+            breakdown, pressure drop, mass and a temperature map of the base, with every
+            physics check shown.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── TRUST ───────────── -->
+  <section id="tab-trust" class="tab">
+    <div class="panel" id="trust-results"><div class="empty"><p>Loading…</p></div></div>
+  </section>
+</main>
+
+<footer class="foot">
+  Built on <b>PINNeAPPle</b> · Correlations: Teertstra et al. 2000 (forced), Bar-Cohen &amp;
+  Rohsenow 1984 (natural), Lee et al. 1995 (spreading), Muzychka &amp; Yovanovich (pressure drop).
+  Engineering estimate — confirm critical designs by test.
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
