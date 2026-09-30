@@ -26,6 +26,23 @@ docker build -f apps/heatsink_sizer/Dockerfile -t heatsink-sizer .
 docker run -p 8080:8080 heatsink-sizer
 ```
 
+### Put it on a server (HTTPS + login)
+
+On any Linux server with Docker (2 vCPU / 2 GB RAM is enough; each worker holds
+~600 MB), with ports 80/443 open and a DNS record for your domain:
+
+```bash
+cd apps/heatsink_sizer/deploy
+cp .env.example .env          # set DOMAIN, HSS_USER, HSS_PASSWORD
+docker compose up -d --build  # Caddy obtains the HTTPS certificate automatically
+```
+
+- `HSS_USER` / `HSS_PASSWORD`: HTTP Basic login for everything except `/health`
+  (leave empty for open access).
+- `HSS_MAX_SIZING`: concurrent sizing runs per worker (default 2); extra requests
+  get HTTP 429 instead of piling up. Measured on 4 CPU cores: 8 simultaneous
+  sizings finish in ≤ 13 s, 16 simultaneous evaluations in ≤ 2.7 s.
+
 The trained surrogates ship in `artifacts/`. To retrain (≈4 min on 4 CPU cores:
 11 000 physics solves + training):
 

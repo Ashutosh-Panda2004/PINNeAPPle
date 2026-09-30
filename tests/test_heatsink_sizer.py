@@ -151,3 +151,25 @@ def test_field3d_is_physically_consistent():
     assert 25 < root.min() and root.max() <= bottom.max() + 1e-9          # heat flows source -> fins
     assert bottom.max() == pytest.approx(f["hotspot"]["t_c"], abs=1e-3)   # sent rounded to 3 dp
     assert top.max() < bottom.max()
+
+
+def test_api_basic_auth_and_busy_limit(monkeypatch):
+    pytest.importorskip("fastapi")
+    pytest.importorskip("httpx")
+    import base64
+    import threading
+    from fastapi.testclient import TestClient
+    from heatsink_sizer import api
+    monkeypatch.setattr(api, "_USER", "eng")
+    monkeypatch.setattr(api, "_PASSWORD", "s3cret")
+    c = TestClient(api.app)
+    assert c.get("/health").status_code == 200                  # probes stay open
+    assert c.get("/api/meta").status_code == 401
+    good = {"Authorization": "Basic " + base64.b64encode(b"eng:s3cret").decode()}
+    bad = {"Authorization": "Basic " + base64.b64encode(b"eng:nope").decode()}
+    assert c.get("/api/meta", headers=bad).status_code == 401
+    assert c.get("/api/meta", headers=good).status_code == 200
+    monkeypatch.setattr(api, "_SIZING_SLOTS", threading.BoundedSemaphore(1))
+    api._SIZING_SLOTS.acquire()                                   # another run in progress
+    r = c.post("/api/size", json={"power_w": 50, "t_limit_c": 80}, headers=good)
+    assert r.status_code == 429
