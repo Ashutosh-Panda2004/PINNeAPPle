@@ -90,6 +90,9 @@ def solve_base_field(
     # Bottom-surface temperature: half-cell conduction correction under the source.
     bottom = theta[0] + q_flux * (area / (dx * dy)) * dz / (2 * k)
     q_out = float(np.sum(g_top * theta[-1]))
+    # Top-face (fin-root side) surface temperature: cell centre minus the
+    # half-cell conduction drop carrying that cell's outgoing flux.
+    top = theta[-1] - (g_top * theta[-1]) * dz / (2 * k * dx * dy)
     under = area > 0
     return {
         "theta_bottom": bottom,                 # (ny, nx) K above ambient
@@ -101,4 +104,7 @@ def solve_base_field(
         "hotspot_xy_m": [float((np.argmax(bottom) % nx + 0.5) * dx),
                          float((np.argmax(bottom) // nx + 0.5) * dy)],
         "under_source_cells": int(under.sum()),
+        "theta_top": top,                       # (ny, nx) K above ambient
+        "x_centers": (np.arange(nx) + 0.5) * dx,
+        "y_centers": (np.arange(ny) + 0.5) * dy,
     }

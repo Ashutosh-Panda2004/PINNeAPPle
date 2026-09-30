@@ -136,3 +136,18 @@ def test_sizer_with_trained_surrogate_if_available():
     assert "surrogate" in res["search"]["screening"]["method"]
     assert res["status"] == "ok"
     assert res["search"]["screen_error_on_verified_c"]["mean_abs"] < 2.0
+
+
+def test_field3d_is_physically_consistent():
+    import numpy as np
+    from heatsink_sizer.engine import DesignInput, OperatingInput, evaluate_design
+    r = evaluate_design(DesignInput(80, 80, 6, 30, 1.2, 35), OperatingInput(100, 25, 2, 30, 30))
+    f = r["field3d"]
+    root = np.array(f["fins"]["root_c"])
+    assert root.shape == (30, len(f["base"]["y"]))
+    ratio = np.array(f["fin_profile"]["theta_ratio"])
+    assert ratio[0] == pytest.approx(1.0) and np.all(np.diff(ratio) < 0)   # tip cooler than root
+    top, bottom = np.array(f["base"]["top_c"]), np.array(f["base"]["bottom_c"])
+    assert 25 < root.min() and root.max() <= bottom.max() + 1e-9          # heat flows source -> fins
+    assert bottom.max() == pytest.approx(f["hotspot"]["t_c"], abs=1e-3)   # sent rounded to 3 dp
+    assert top.max() < bottom.max()

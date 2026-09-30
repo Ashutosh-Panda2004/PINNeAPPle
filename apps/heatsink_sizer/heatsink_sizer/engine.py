@@ -93,6 +93,55 @@ def physics_resistance(design: DesignInput, op: OperatingInput, n: int = 36) -> 
             "mass_kg": net["mass_kg"]}
 
 
+def field_3d(g: HeatSinkGeometry, op: OperatingInput, fvm: Dict[str, Any],
+             nominal: Dict[str, Any], t_amb: float, max_cells: int = 64, n_z: int = 14,
+             ) -> Dict[str, Any]:
+    """Surface temperatures of the whole heat sink for the 3D viewer.
+
+    * Base: bottom and top faces straight from the 3D finite-volume solve.
+    * Fins: each fin root takes the local top-face temperature under it
+      (along the flow direction), and the temperature up the fin follows
+      the 1D fin equation used by the resistance network,
+      theta(z)/theta_root = cosh(m (Lc - z)) / cosh(m Lc)
+      (Incropera, adiabatic tip via the corrected length Lc).
+    All lengths in mm, temperatures in °C.
+    """
+    def pick(n):
+        return np.linspace(0, n - 1, min(max_cells, n)).round().astype(int)
+
+    iy, ix = pick(fvm["theta_bottom"].shape[0]), pick(fvm["theta_bottom"].shape[1])
+    xs, ys = fvm["x_centers"][ix] / MM, fvm["y_centers"][iy] / MM
+    top = fvm["theta_top"][np.ix_(iy, ix)]
+    bottom = fvm["theta_bottom"][np.ix_(iy, ix)]
+
+    t, gap = g.fin_thickness / MM, g.fin_gap / MM
+    x_fins = t / 2 + np.arange(g.n_fins) * (t + gap)
+    root = np.stack([[np.interp(xf, xs, row) for row in top] for xf in x_fins])  # (n_fins, ny)
+
+    m, lc = nominal["fin_m_per_m"], nominal["fin_lc_m"]
+    z = np.linspace(0.0, g.fin_height, n_z)
+    ratio = np.cosh(m * (lc - z)) / np.cosh(m * lc) if m * lc > 1e-9 else np.ones_like(z)
+    r2 = lambda a: np.round(a, 3).tolist()
+    return {
+        "t_ambient_c": t_amb,
+        "base": {"width": g.base_width / MM, "depth": g.base_depth / MM,
+                 "thickness": g.base_thickness / MM, "x": r2(xs), "y": r2(ys),
+                 "bottom_c": r2(bottom + t_amb), "top_c": r2(top + t_amb)},
+        "fins": {"x_centers": r2(x_fins), "thickness": t, "height": g.fin_height / MM,
+                 "root_c": r2(root + t_amb)},
+        "fin_profile": {"z": r2(z / MM), "theta_ratio": [float(v) for v in ratio]},
+        "hotspot": {"x": fvm["hotspot_xy_m"][0] / MM, "y": fvm["hotspot_xy_m"][1] / MM,
+                    "t_c": float(fvm["theta_max"] + t_amb)},
+        "source": {"w": op.source_width_mm, "d": op.source_depth_mm,
+                   "x": op.source_x_mm if op.source_x_mm is not None else g.base_width / MM / 2,
+                   "y": op.source_y_mm if op.source_y_mm is not None else g.base_depth / MM / 2},
+        "flow": {"mode": nominal["mode"], "velocity_m_s": op.air_velocity_m_s,
+                 "direction": "+depth" if nominal["mode"] == "forced" else "up (vertical fins)"},
+        "method": "Base: 3D finite volumes. Fins: 1D fin equation from the local root "
+                  "temperature (Incropera). Surface temperatures; air not shown.",
+    }
+
+
 def evaluate_design(design: DesignInput, op: OperatingInput, *, grid: int = 48,
                     map_size: int = 40) -> Dict[str, Any]:
     g, o = design.geometry(), op.operating()
@@ -200,6 +249,7 @@ def evaluate_design(design: DesignInput, op: OperatingInput, *, grid: int = 48,
                        "y": op.source_y_mm if op.source_y_mm is not None else design.base_depth_mm / 2},
             "note": "Bottom face of the base (heat-source side), from the 3D finite-volume solve.",
         },
+        "field3d": field_3d(g, op, fvm, nominal, Ta),
         "checks": checks,
         "warnings": nominal["warnings"],
         "details": {"dimensionless": nominal["dimensionless"], "material": nominal["material"],

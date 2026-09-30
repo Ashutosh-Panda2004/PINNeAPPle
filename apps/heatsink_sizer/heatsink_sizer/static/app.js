@@ -165,6 +165,10 @@ function renderEval(r) {
       <div class="kpi"><div class="l">Pressure drop</div><div class="v">${fmt(k.pressure_drop_pa, 1)} Pa</div><div class="s">${fmt(k.airflow_m3_h, 1)} m³/h · ${fmt(k.fan_power_w, 2)} W air power</div></div>` : ""}
       <div class="kpi"><div class="l">Fin efficiency</div><div class="v">${fmt(k.fin_efficiency * 100, 0)} %</div><div class="s">h = ${fmt(k.h_w_m2k, 1)} W/m²K · gap ${fmt(k.fin_gap_mm, 2)} mm</div></div>
     </div>
+    <h3>3D temperature field</h3>
+    <div id="v3d" class="v3d"></div>
+    <div class="meta">${esc(r.field3d.method)} Drag to rotate, scroll to zoom, right-drag to pan;
+      hover to probe the temperature.</div>
     <div class="grid2">
       <div>
         <h3>Where the temperature rise comes from</h3>
@@ -190,6 +194,22 @@ function renderEval(r) {
     <p class="meta"><b>Method.</b> ${esc(r.method)} Uncertainty band: ±${fmt(r.details.h_uncertainty_band * 100, 0)}% on the convection coefficient
       (typical correlation accuracy — an engineering assumption, not a measurement).</p>`;
   drawMap(r.temperature_map);
+  show3d(r.field3d);
+}
+
+// three.js viewer, loaded on first use (ES module + import map)
+let VIEWER = null;
+async function show3d(field) {
+  const box = $("#v3d");
+  try {
+    const { HeatSinkViewer } = await import("/static/viewer3d.js");
+    // one WebGL context for the page: re-attach the existing viewer
+    if (!VIEWER) VIEWER = new HeatSinkViewer(box);
+    else if (VIEWER.el !== box) box.replaceWith(VIEWER.el);
+    VIEWER.load(field);
+  } catch (err) {
+    box.innerHTML = `<p class="meta">3D view unavailable in this browser (${esc(err.message)}).</p>`;
+  }
 }
 
 // ── colour map (perceptual, "inferno"-like) ──────────────────────────────────

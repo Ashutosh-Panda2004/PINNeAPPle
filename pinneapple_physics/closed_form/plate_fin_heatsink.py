@@ -287,6 +287,8 @@ def evaluate(g: HeatSinkGeometry, op: OperatingPoint, max_iter: int = 60,
                             "fins_convection": r_conv},
         "h_w_m2k": conv["h"],
         "fin_efficiency": eta,
+        "fin_m_per_m": m,                  # fin parameter sqrt(2h/(k t))
+        "fin_lc_m": fin["lc_m"],           # adiabatic-tip corrected fin length
         "fin_gap_mm": g.fin_gap * 1e3,
         "mass_kg": g.mass_kg(),
         "pressure_drop_pa": conv["pressure_drop_pa"],
