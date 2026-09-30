@@ -3,7 +3,7 @@
 // legend, standard views, probe under the cursor, banded contours, edges,
 // airflow arrow, heat-source footprint and hotspot marker, PNG export.
 import * as THREE from "three";
-import { OrbitControls } from "/static/vendor/three/OrbitControls.js";
+import { OrbitControls } from "/vendor/three/OrbitControls.js";
 
 const CMAPS = {
   rainbow: [[0, [0, 0, 255]], [0.25, [0, 255, 255]], [0.5, [0, 255, 0]], [0.75, [255, 255, 0]], [1, [255, 0, 0]]],

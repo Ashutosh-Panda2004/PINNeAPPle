@@ -1,0 +1,4 @@
+# on top of `pip install .` (PINNeAPPle core)
+fastapi>=0.111
+uvicorn[standard]>=0.29
+pyamg>=5.0          # algebraic multigrid for the layered-board solve (falls back to a direct solve)

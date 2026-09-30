@@ -9,14 +9,12 @@ Environment (all optional):
 """
 from __future__ import annotations
 
-import base64
 import os
-import secrets
-import threading
+import sys
 from typing import List, Literal, Optional
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -26,31 +24,18 @@ from .engine import H_BAND, DesignInput, OperatingInput, evaluate_design
 from .sizer import PROCESSES, SizingRequest, size
 from .surrogate import COMMON_RANGES, MODE_RANGES, load_surrogates
 
+# apps/_shared: login, busy limiter and the vendored three.js used by every app
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "_shared"))
+from appkit import BusyLimiter, install  # noqa: E402
+
 VERSION = "1.0.0"
 STATIC = os.path.join(os.path.dirname(__file__), "static")
 
 app = FastAPI(title="HeatSink Sizer", version=VERSION,
               description="Plate-fin heat sink sizing with verified physics (PINNeAPPle).")
+install(app, prefix="HSS")
 _SURROGATES = load_surrogates()
-
-_USER, _PASSWORD = os.environ.get("HSS_USER"), os.environ.get("HSS_PASSWORD")
-_SIZING_SLOTS = threading.BoundedSemaphore(int(os.environ.get("HSS_MAX_SIZING", "2")))
-
-
-@app.middleware("http")
-async def basic_auth(request: Request, call_next):
-    if _USER and _PASSWORD and request.url.path != "/health":
-        ok = False
-        header = request.headers.get("authorization", "")
-        if header.lower().startswith("basic "):
-            try:
-                user, _, pw = base64.b64decode(header[6:]).decode().partition(":")
-                ok = secrets.compare_digest(user, _USER) and secrets.compare_digest(pw, _PASSWORD)
-            except (ValueError, UnicodeDecodeError):
-                ok = False
-        if not ok:
-            return Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="HeatSink Sizer"'})
-    return await call_next(request)
+_SIZING = BusyLimiter("HSS_MAX_SIZING")
 
 MaterialName = Literal[tuple(MATERIALS)]  # type: ignore[valid-type]
 
@@ -129,15 +114,11 @@ def api_evaluate(req: EvaluateRequest):
 
 @app.post("/api/size")
 def api_size(req: SizeModel):
-    if not _SIZING_SLOTS.acquire(blocking=False):
-        raise HTTPException(status_code=429, detail="Server busy with other sizing runs -- "
-                                                    "please retry in a few seconds.")
-    try:
-        return size(SizingRequest(**req.model_dump()), _SURROGATES)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
-    finally:
-        _SIZING_SLOTS.release()
+    with _SIZING:
+        try:
+            return size(SizingRequest(**req.model_dump()), _SURROGATES)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @app.get("/api/surrogate/{mode}/report")

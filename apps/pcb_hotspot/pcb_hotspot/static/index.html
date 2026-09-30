@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PCB Hotspot</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%231a7f4b%22/%3E%3Crect x=%224%22 y=%224%22 width=%228%22 height=%228%22 fill=%22white%22/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <div class="logo" style="background:#1a7f4b">▣</div>
+    <div>
+      <div class="title">PCB Hotspot</div>
+      <div class="subtitle">Board-level thermal analysis — junction temperatures, hotspots and fixes</div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-tab="board" class="active">Board &amp; layout</button>
+    <button data-tab="report">Thermal report</button>
+    <button data-tab="whatif">What-if</button>
+    <button data-tab="calibrate">Calibrate to measurements</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ───────────── BOARD ───────────── -->
+  <section id="tab-board" class="tab active">
+    <div class="layout3">
+      <form id="setup" class="panel form" onsubmit="return false">
+        <h2>Board</h2>
+        <fieldset>
+          <legend>Size &amp; stack-up</legend>
+          <div class="row2">
+            <label>Width <span class="u">mm</span><input name="width_mm" type="number" step="any" value="160"></label>
+            <label>Depth / height <span class="u">mm</span><input name="depth_mm" type="number" step="any" value="100"></label>
+          </div>
+          <div class="row3">
+            <label>Copper layers<input name="n_copper" type="number" step="1" value="6"></label>
+            <label>Thickness <span class="u">mm</span><input name="thickness_mm" type="number" step="any" value="1.6"></label>
+            <label>Outer <span class="u">oz</span><input name="outer_oz" type="number" step="any" value="1"></label>
+          </div>
+          <div class="row3">
+            <label>Inner <span class="u">oz</span><input name="inner_oz" type="number" step="any" value="1"></label>
+            <label>Outer Cu <span class="u">%</span><input name="outer_coverage_pct" type="number" step="any" value="30"></label>
+            <label>Inner Cu <span class="u">%</span><input name="inner_coverage_pct" type="number" step="any" value="90"></label>
+          </div>
+          <div class="checks"><label><input type="checkbox" name="chassis_edges"> Edges clamped to chassis (card-edge cooling)</label></div>
+        </fieldset>
+        <fieldset>
+          <legend>Environment</legend>
+          <label>Ambient air <span class="u">°C</span><input name="t_ambient_c" type="number" step="any" value="35"></label>
+          <div class="seg" data-target="cooling">
+            <button type="button" data-v="natural" class="on">Natural convection</button>
+            <button type="button" data-v="forced">Airflow</button>
+          </div>
+          <label class="forced-only" style="display:none">Air velocity <span class="u">m/s</span><input name="air_velocity_m_s" type="number" step="any" value="1"></label>
+          <label class="natural-only">Mounting<select name="orientation"><option value="vertical">Vertical board</option><option value="horizontal">Horizontal board</option></select></label>
+          <label>Surface emissivity<input name="emissivity" type="number" step="any" value="0.9"></label>
+        </fieldset>
+        <button class="primary" type="button" id="run-full">Run full analysis</button>
+      </form>
+
+      <div class="panel">
+        <div class="toolbar">
+          <div><h2 style="margin:0">Layout</h2>
+            <div class="status-line" id="live-status">Drag components on the board — temperatures update after each move.</div></div>
+          <div class="seg" id="face-seg" style="margin:0;min-width:180px">
+            <button type="button" data-v="top" class="on">Top face</button>
+            <button type="button" data-v="bottom">Bottom face</button>
+          </div>
+        </div>
+        <div class="boardwrap"><canvas id="board"></canvas></div>
+        <div class="board-legend"><span id="leg-min"></span><canvas id="leg" width="220" height="12"></canvas><span id="leg-max"></span><span>· junction temperatures shown on each part</span></div>
+        <div id="live-table"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:18px">
+      <div class="toolbar"><h2 style="margin:0">Components</h2><span class="meta">Edit values here or drag parts on the layout.</span></div>
+      <div style="overflow-x:auto">
+        <table class="comp-table"><thead><tr><th>Name</th><th>Package</th><th>Power W</th><th>x mm</th><th>y mm</th><th>Side</th><th>Tj max °C</th><th>θ<sub>JB</sub> K/W</th><th>θ<sub>JC</sub> K/W</th><th>Thermal vias</th><th></th></tr></thead>
+          <tbody id="comp-rows"></tbody></table>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="ghost" id="add-comp">+ Component</button>
+        <button type="button" class="ghost" id="load-example">Load example board</button>
+        <button type="button" class="ghost" id="export-json">Export case (JSON)</button>
+        <label class="ghost filebtn">Import case<input type="file" id="import-json" accept=".json,application/json" hidden></label>
+      </div>
+      <p class="hint">Blank θ<sub>JB</sub>/θ<sub>JC</sub> use typical values for the package (shown greyed) — enter your
+        datasheet numbers for a sign-off analysis. x/y are the part centre from the board's lower-left corner.</p>
+    </div>
+  </section>
+
+  <!-- ───────────── REPORT ───────────── -->
+  <section id="tab-report" class="tab"><div class="panel" id="report"><div class="empty"><h3>No report yet</h3><p>Set up the board and press <b>Run full analysis</b>.</p></div></div></section>
+  <!-- ───────────── WHAT-IF ───────────── -->
+  <section id="tab-whatif" class="tab"><div class="panel" id="whatif"><div class="empty"><h3>What would fix it?</h3>
+    <p>Re-solves the board with common fixes — thermal vias under the critical part, heavier copper, more
+    planes, airflow, chassis clamping — and shows how many degrees each one buys.</p>
+    <button class="primary" style="max-width:240px" id="run-whatif">Run what-if study</button></div></div></section>
+  <!-- ───────────── CALIBRATE ───────────── -->
+  <section id="tab-calibrate" class="tab">
+    <div class="layout3">
+      <div class="panel form">
+        <h2>Measurements</h2>
+        <p class="hint">One per line. Board points: <code>x_mm, y_mm, T_°C[, top|bottom]</code> (thermocouple or IR
+          spot). Junction readings: <code>ComponentName, T_°C</code> (on-die sensor). With 5+ points, 20% are
+          held out to test the calibrated model.</p>
+        <textarea id="meas" rows="12" placeholder="20, 80, 61.2&#10;80, 20, 66.0&#10;FPGA, 118.5"></textarea>
+        <label>Measurement uncertainty <span class="u">°C (1σ)</span><input id="noise" type="number" step="any" value="1.0"></label>
+        <button class="primary" type="button" id="run-cal">Calibrate model</button>
+        <p class="hint">Fits two physical unknowns with PINNeAPPle's Ensemble Kalman Inversion: the real surface
+          cooling (enclosure, nearby parts) and the real in-plane spreading (copper coverage/quality).</p>
+      </div>
+      <div class="panel" id="cal-results"><div class="empty"><h3>Make the model match your board</h3>
+        <p>Correlation-based models are typically within ±20%. A few measured temperatures pin down the actual
+        cooling and copper spreading of <i>your</i> product, and the junction temperatures are re-predicted with
+        their uncertainty.</p></div></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  Built on <b>PINNeAPPle</b> · 3D finite volumes per layer · JEDEC JESD15-3 two-resistor packages · Churchill &amp; Chu
+  / flat-plate convection + radiation · Ensemble Kalman Inversion calibration. Engineering estimate — confirm by test.
+</footer>
+<script type="importmap">{"imports": {"three": "/vendor/three/three.module.min.js"}}</script>
+<script src="/static/app.js"></script>
+</body>
+</html>
