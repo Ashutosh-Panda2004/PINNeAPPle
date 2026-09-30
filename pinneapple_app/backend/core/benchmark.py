@@ -46,6 +46,10 @@ def build_benchmark_payload(result) -> Dict[str, Any]:
         "charts":        charts,
         "summary":       summary,
         "errors":        errors,
+        # Per-model surrogate quality report (error, convergence,
+        # generalization, variables, weights, UQ, physics checks, verdict).
+        "reports":       {name: r.report for name, r in result.model_results.items()
+                          if r.report is not None},
     })
 
 
@@ -181,6 +185,13 @@ def _build_summary(result, leaderboard: list) -> str:
             f"t={row.get('train_time_s', '?')}s  "
             f"params={row.get('n_params', '?')}"
         )
+
+    verdicts = [(n, r.report["verdict"]) for n, r in result.model_results.items()
+                if r.report and r.report.get("verdict")]
+    if verdicts:
+        lines += ["", "=== Can I trust it? ==="]
+        for n, v in verdicts:
+            lines.append(f"  {n:<25s}  {v['status']}: {'; '.join(v['reasons'][:3])}")
 
     failed = [n for n, r in result.model_results.items() if r.error]
     if failed:

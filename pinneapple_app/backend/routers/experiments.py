@@ -68,7 +68,8 @@ async def launch_experiment(req: ExperimentRequest, background_tasks: Background
     from ..core.experiment import ExperimentConfig, ModelRunConfig, ExperimentRunner
     from ..core.collocation import CollocationConfig
     from ..core.data_pipeline import DataConfig, run_data_pipeline
-    from ..core.problem import load_preset, define_custom, EquationSpec, BoundaryConditionSpec
+    from ..core.problem import (load_preset, define_custom, EquationSpec,
+                                BoundaryConditionSpec, InitialConditionSpec)
 
     exp_id = _new_id()
     _EXPERIMENTS[exp_id] = {"status": "queued", "progress": 0.0, "request": req.model_dump()}
@@ -79,11 +80,17 @@ async def launch_experiment(req: ExperimentRequest, background_tasks: Background
         cp = req.custom_problem
         problem = define_custom(
             name=cp.get("name", "custom"),
-            equations=[EquationSpec(expression=e) for e in cp.get("equations", [])],
-            bcs=[BoundaryConditionSpec(kind=b.get("kind", "dirichlet"),
+            equations=[EquationSpec(expression=e["expression"], field=e.get("field", "u"))
+                       if isinstance(e, dict) else EquationSpec(expression=e)
+                       for e in cp.get("equations", [])],
+            bcs=[BoundaryConditionSpec(kind=b.get("kind", b.get("type", "dirichlet")),
                                        location=b.get("location", ""),
-                                       value=b.get("value", 0.0))
+                                       value=b.get("value", 0.0),
+                                       field=b.get("field", "u"))
                  for b in cp.get("boundary_conditions", [])],
+            ics=[InitialConditionSpec(expression=ic.get("value", ic.get("expression", 0.0)),
+                                      field=ic.get("field", "u"))
+                 for ic in cp.get("initial_conditions", [])],
             domain_bounds={k: tuple(v) for k, v in cp.get("domain_bounds", {"x": [0,1]}).items()},
             dim=cp.get("dim", 2),
             pde_family=cp.get("pde_family", "generic"),

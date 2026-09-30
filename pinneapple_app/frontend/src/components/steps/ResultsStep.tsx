@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../../store'
+import { SurrogateReportView } from '../SurrogateReportView'
 
-type Tab = 'leaderboard' | 'charts' | 'summary'
+type Tab = 'leaderboard' | 'trust report' | 'charts' | 'summary'
 
 export function ResultsStep() {
   const { benchmarkPayload, setStep } = useStore()
@@ -19,6 +20,7 @@ export function ResultsStep() {
   }
 
   const { leaderboard, charts, summary, errors, problem_name, experiment_id, completed_at } = benchmarkPayload
+  const reports = benchmarkPayload.reports ?? {}
 
   const CHART_LABELS: Record<string, string> = {
     loss_curves:        'Training Curves',
@@ -57,8 +59,8 @@ export function ResultsStep() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-900 rounded-lg p-1 max-w-sm">
-        {(['leaderboard', 'charts', 'summary'] as Tab[]).map((t) => (
+      <div className="flex gap-1 bg-gray-900 rounded-lg p-1 max-w-lg">
+        {(['leaderboard', 'trust report', 'charts', 'summary'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -78,6 +80,7 @@ export function ResultsStep() {
               <tr className="border-b border-gray-800">
                 <th className="text-left py-2 px-3 text-gray-400 font-medium">#</th>
                 <th className="text-left py-2 px-3 text-gray-400 font-medium">Model</th>
+                <th className="text-left py-2 px-3 text-gray-400 font-medium">Trust</th>
                 <th className="text-right py-2 px-3 text-gray-400 font-medium">L2 Error</th>
                 <th className="text-right py-2 px-3 text-gray-400 font-medium">MSE</th>
                 <th className="text-right py-2 px-3 text-gray-400 font-medium">PDE Residual</th>
@@ -90,6 +93,11 @@ export function ResultsStep() {
                 <tr key={row.model} className={clsx('border-b border-gray-800/50', i === 0 && 'bg-green-900/10')}>
                   <td className="py-2 px-3 text-gray-500">{i + 1}</td>
                   <td className="py-2 px-3 font-mono text-gray-100">{row.model}</td>
+                  <td className={clsx('py-2 px-3 text-xs',
+                    row.verdict === 'trustworthy' ? 'text-green-400'
+                      : row.verdict === 'not_trustworthy' ? 'text-red-400' : 'text-yellow-400')}>
+                    {typeof row.verdict === 'string' ? row.verdict.replace(/_/g, ' ') : '—'}
+                  </td>
                   <td className="py-2 px-3 text-right text-gray-300">
                     {typeof row.l2_relative === 'number' ? row.l2_relative.toExponential(3) : '—'}
                   </td>
@@ -108,7 +116,7 @@ export function ResultsStep() {
                 </tr>
               ))}
               {leaderboard.length === 0 && (
-                <tr><td colSpan={7} className="py-8 text-center text-gray-500">No results yet.</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-gray-500">No results yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -120,6 +128,18 @@ export function ResultsStep() {
                 <div key={name} className="text-xs text-red-300 font-mono">{name}: {err}</div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Trust report */}
+      {tab === 'trust report' && (
+        <div className="space-y-4">
+          {Object.entries(reports).map(([name, rep]) => (
+            <SurrogateReportView key={name} model={name} report={rep} />
+          ))}
+          {Object.keys(reports).length === 0 && (
+            <div className="card text-gray-500 text-sm py-8 text-center">No report available.</div>
           )}
         </div>
       )}
