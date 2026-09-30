@@ -174,3 +174,41 @@ def test_api_basic_auth_and_busy_limit(monkeypatch):
     api._SIZING.slots.acquire()                                   # another run in progress
     r = c.post("/api/size", json={"power_w": 50, "t_limit_c": 80}, headers=good)
     assert r.status_code == 429
+
+
+# ── independent cross-checks (different correlations than the model uses) ──
+
+@pytest.mark.parametrize("v", [0.5, 1.0, 2.0, 4.0])
+def test_forced_fin_resistance_matches_stephan_eps_ntu(v):
+    """Teertstra (model) vs. Stephan developing-flow Nusselt + epsilon-NTU air heating."""
+    g = pfh.HeatSinkGeometry(0.08, 0.08, 0.006, 24, 0.0012, 0.035)
+    r = pfh.evaluate(g, pfh.OperatingPoint(100, 25, v, 0.03, 0.03))
+    air = pfh.air_properties(25 + 0.5 * (r["t_fin_root_c"] - 25))
+    b, H, L = g.fin_gap, g.fin_height, g.base_depth
+    dh = 2 * b
+    re = v * g.base_width / ((g.n_fins - 1) * b) * dh / air["nu"]
+    xs = L / (dh * re * air["pr"])
+    h = (7.55 + 0.024 * xs ** -1.14 / (1 + 0.0358 * air["pr"] ** 0.17 * xs ** -0.64)) * air["k"] / dh
+    k = pfh.MATERIALS[g.material]["k"]
+    lc = H + g.fin_thickness / 2
+    ml = math.sqrt(2 * h / (k * g.fin_thickness)) * lc
+    ha = h * (math.tanh(ml) / ml * 2 * lc * L * g.n_fins + (g.base_width - g.n_fins * g.fin_thickness) * L)
+    mcp = air["rho"] * v * g.base_width * H * air["cp"]
+    r_ind = 1 / (mcp * (1 - math.exp(-ha / mcp)))
+    assert r["resistances_k_w"]["fins_convection"] == pytest.approx(r_ind, rel=0.08)
+
+
+def test_natural_convection_matches_elenbaas_and_optimum_spacing():
+    op = pfh.OperatingPoint(20, 25, 0, 0.03, 0.03)
+    g = pfh.HeatSinkGeometry(0.1, 0.1, 0.005, 12, 0.002, 0.03)
+    r = pfh.evaluate(g, op)
+    el = r["dimensionless"]["elenbaas"]
+    air = pfh.air_properties(25 + 0.5 * (r["t_fin_root_c"] - 25))
+    h_elenbaas = el / 24 * (1 - math.exp(-35 / el)) ** 0.75 * air["k"] / g.fin_gap
+    assert r["h_w_m2k"] == pytest.approx(h_elenbaas, rel=0.05)
+    dt = r["t_fin_root_c"] - 25
+    s_opt = 2.714 * (0.1 * air["nu"] * air["alpha"] / (9.81 * air["beta"] * dt)) ** 0.25
+    best = min(range(5, 40), key=lambda n: pfh.evaluate(
+        pfh.HeatSinkGeometry(0.1, 0.1, 0.005, n, 0.002, 0.03), op)["r_total_k_w"])
+    gap = (0.1 - best * 0.002) / (best - 1)
+    assert gap == pytest.approx(s_opt, rel=0.15)

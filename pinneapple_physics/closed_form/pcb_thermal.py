@@ -148,17 +148,31 @@ def convection_coefficients(width_m: float, depth_m: float, t_surface_c: Tuple[f
 
 
 # ── component packages (JEDEC two-resistor model) ───────────────────────────
-# Typical values for illustration -- the UI tells users to enter their
-# datasheet's theta_JB / theta_JC(top).
+# Typical values. theta_JC(top) is the median of published datasheets;
+# theta_JB is the *model* value that makes this board model reproduce the
+# median published JEDEC JESD51-7 (2s2p, still air) theta_JA of the package
+# (target in ``JEDEC_2S2P_THETA_JA``, checked in tests/test_pcb_hotspot.py).
+# It lands inside the datasheet theta_JB range but a little lower, because
+# here the board node is directly under the part, not at its edge
+# (JESD51-8). Users should enter their own datasheet numbers for sign-off.
 PACKAGES: Dict[str, Dict[str, float]] = {
-    "QFN-32 5x5":   {"w_mm": 5.0, "d_mm": 5.0, "h_mm": 0.9, "theta_jb": 10.0, "theta_jc": 25.0},
-    "QFN-64 9x9":   {"w_mm": 9.0, "d_mm": 9.0, "h_mm": 0.9, "theta_jb": 6.0, "theta_jc": 15.0},
-    "BGA 17x17":    {"w_mm": 17.0, "d_mm": 17.0, "h_mm": 1.5, "theta_jb": 5.0, "theta_jc": 3.0},
-    "BGA 35x35":    {"w_mm": 35.0, "d_mm": 35.0, "h_mm": 2.5, "theta_jb": 2.5, "theta_jc": 0.5},
-    "QFP-100 14x14": {"w_mm": 14.0, "d_mm": 14.0, "h_mm": 1.4, "theta_jb": 25.0, "theta_jc": 8.0},
-    "SOIC-8":       {"w_mm": 4.9, "d_mm": 6.0, "h_mm": 1.5, "theta_jb": 45.0, "theta_jc": 55.0},
-    "TO-252 DPAK":  {"w_mm": 6.6, "d_mm": 10.0, "h_mm": 2.3, "theta_jb": 3.0, "theta_jc": 50.0},
-    "TO-263 D2PAK": {"w_mm": 10.2, "d_mm": 15.0, "h_mm": 4.5, "theta_jb": 1.5, "theta_jc": 40.0},
+    "QFN-32 5x5":   {"w_mm": 5.0, "d_mm": 5.0, "h_mm": 0.9, "theta_jb": 11.0, "theta_jc": 25.0},
+    "QFN-64 9x9":   {"w_mm": 9.0, "d_mm": 9.0, "h_mm": 0.9, "theta_jb": 7.3, "theta_jc": 15.0},
+    "BGA 17x17":    {"w_mm": 17.0, "d_mm": 17.0, "h_mm": 1.5, "theta_jb": 14.0, "theta_jc": 6.0},
+    "BGA 35x35":    {"w_mm": 35.0, "d_mm": 35.0, "h_mm": 2.5, "theta_jb": 1.4, "theta_jc": 0.5},
+    "QFP-100 14x14": {"w_mm": 14.0, "d_mm": 14.0, "h_mm": 1.4, "theta_jb": 31.0, "theta_jc": 12.0},
+    "SOIC-8":       {"w_mm": 4.9, "d_mm": 6.0, "h_mm": 1.5, "theta_jb": 87.0, "theta_jc": 60.0},
+    "TO-252 DPAK":  {"w_mm": 6.6, "d_mm": 10.0, "h_mm": 2.3, "theta_jb": 20.0, "theta_jc": 52.0},
+    "TO-263 D2PAK": {"w_mm": 10.2, "d_mm": 15.0, "h_mm": 4.5, "theta_jb": 12.0, "theta_jc": 40.0},
     "LED 3535":     {"w_mm": 3.5, "d_mm": 3.5, "h_mm": 2.0, "theta_jb": 8.0, "theta_jc": 150.0},
     "Inductor 10x10": {"w_mm": 10.0, "d_mm": 10.0, "h_mm": 4.0, "theta_jb": 15.0, "theta_jc": 30.0},
+}
+
+# Median published theta_JA [K/W] on the JEDEC 2s2p board in still air, e.g.
+# SOIC-8: TI ISO6521 104.6, SN75157 116.7, OPA892 124.5, TL082 147.8;
+# LQFP-100: ST 51, JCET 37.2; TO-252: TI LM1117 NDP 45.1; FCBGA: Microchip
+# PolarFire 8.2. QFN with exposed pad soldered and via'd to the planes.
+JEDEC_2S2P_THETA_JA: Dict[str, float] = {
+    "QFN-32 5x5": 33.0, "QFN-64 9x9": 24.0, "BGA 17x17": 28.0, "BGA 35x35": 9.5,
+    "QFP-100 14x14": 45.0, "SOIC-8": 120.0, "TO-252 DPAK": 45.0, "TO-263 D2PAK": 30.0,
 }

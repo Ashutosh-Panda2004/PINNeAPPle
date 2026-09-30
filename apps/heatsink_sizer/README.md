@@ -88,6 +88,10 @@ checkpoint) and an L-BFGS polish on physics-solved designs sampled with
 | FVM energy balance (heat out / heat in − 1) | ~1e-13 |
 | FVM vs Lee et al., square bases (aspect ≤ 2) | 1–5 % apart |
 | FVM vs Lee et al., elongated bases (e.g. 200×30 mm) | Lee under-predicts up to 2× → FVM used, flagged in the report |
+| Forced fin resistance vs. an independent method (Stephan developing-flow Nu + ε-NTU air heating), 0.5–6 m/s | 0–5 % apart |
+| Forced pressure drop vs. fully developed friction + entry/exit losses | 2–4 % apart |
+| Natural h vs. Elenbaas (1942) | 2 % apart |
+| Natural optimum fin gap vs. Bar-Cohen & Rohsenow S_opt | 6.9 vs 6.5 mm |
 | FVM grid convergence (coarse vs fine grid) | < 2 % (typically 0.1–0.5 %) |
 | Spreading formula, source = base | reduces exactly to 1D conduction t/(kA) (test) |
 | Teertstra limits | fully developed Nu = Re*·Pr/2 and developing-plate limit recovered (tests) |

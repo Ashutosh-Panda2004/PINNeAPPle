@@ -25,7 +25,7 @@ def example():
     comps = [Component("FPGA", 62, 52, 8.0, "BGA 35x35", tj_max_c=100),
              Component("DDR", 110, 60, 1.5, "BGA 17x17", tj_max_c=95),
              Component("VRM", 22, 80, 2.0, "QFN-32 5x5", vias=9),
-             Component("LDO", 140, 20, 0.8, "SOIC-8")]
+             Component("LDO", 140, 20, 0.3, "SOIC-8")]
     return board, comps
 
 
@@ -46,6 +46,20 @@ def test_via_fraction_and_convection_trends():
     hot = pt.convection_coefficients(0.16, 0.1, (90.0, 90.0), ENV)
     fan = pt.convection_coefficients(0.16, 0.1, (60.0, 60.0), pt.Environment(35.0, air_velocity_m_s=2.0))
     assert 3 < nat["h_top"] < 20 and hot["h_top"] > nat["h_top"] and fan["h_top"] > nat["h_top"]
+
+
+@pytest.mark.parametrize("package", sorted(pt.JEDEC_2S2P_THETA_JA))
+def test_default_packages_reproduce_published_jedec_theta_ja(package):
+    """Board + convection + default package model on the JESD51-7 2s2p board
+    (still air, horizontal) must give the published median theta_JA."""
+    big = pt.PACKAGES[package]["w_mm"] > 27
+    board = Board(114.3, 101.6 if big else 76.2, n_copper=4, thickness_mm=1.6, outer_oz=2,
+                  inner_oz=1, outer_coverage=0.1, inner_coverage=0.95)
+    vias = {"QFN-32 5x5": 9, "QFN-64 9x9": 16}.get(package, 0)
+    c = Component("U", 57.15, board.depth_mm / 2, 1.0, package, vias=vias)
+    r = solve(board, [c], pt.Environment(25.0, orientation="horizontal"), n_cells=60)
+    theta_ja = r["components"][0]["t_junction_c"] - 25.0
+    assert theta_ja == pytest.approx(pt.JEDEC_2S2P_THETA_JA[package], rel=0.08)
 
 
 # ── board solver ─────────────────────────────────────────────────────────────
@@ -162,7 +176,7 @@ def test_calibration_flags_inconsistent_data_and_inflates_uncertainty():
 CASE = {"board": {"width_mm": 160, "depth_mm": 100, "n_copper": 6},
         "environment": {"t_ambient_c": 35},
         "components": [{"name": "FPGA", "package": "BGA 35x35", "power_w": 8, "x_mm": 62, "y_mm": 52, "tj_max_c": 100},
-                       {"name": "LDO", "package": "SOIC-8", "power_w": 0.8, "x_mm": 140, "y_mm": 20}]}
+                       {"name": "LDO", "package": "SOIC-8", "power_w": 0.3, "x_mm": 140, "y_mm": 20}]}
 
 
 @pytest.fixture()

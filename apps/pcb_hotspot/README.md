@@ -90,7 +90,7 @@ docker compose up -d --build  # Caddy obtains the HTTPS certificate automaticall
 | Horizontal board, natural | Upper face Nu = 0.54 Ra¼ / 0.15 Ra⅓, lower face 0.27 Ra¼ (Incropera & DeWitt) |
 | Airflow | Flat plate, laminar 0.664 Re½ Pr⅓, mixed above Re = 5·10⁵ (Incropera), both faces |
 | Radiation | ε σ (Ts² + T∞²)(Ts + T∞), iterated |
-| Package | JEDEC two-resistor model; typical θJB/θJC per package (override with the datasheet) |
+| Package | JEDEC two-resistor model. Default θJC(top) is the datasheet median. Default θJB is set so the model reproduces the median published θJA on the JEDEC 2s2p board. Override both with the datasheet values. |
 
 **Calibration** (`engine.calibrate`) proceeds in five steps:
 1. **Estimate.** PINNeAPPle `EnsembleKalmanInversion` estimates log h-scale and log in-plane-k scale
@@ -102,13 +102,14 @@ docker compose up -d --build  # Caddy obtains the HTTPS certificate automaticall
    stated sensor noise, the uncertainty is inflated by the Birge ratio and a warning names the likely causes.
 5. **Holdout.** With 5+ readings, 20 % are held out and the error on those unseen points is reported.
 
-## Validation (all in `tests/test_pcb_hotspot.py`, 17 tests)
+## Validation (all in `tests/test_pcb_hotspot.py`, 25 tests)
 
 | Check | Result |
 |---|---|
 | Full-board part with fixed h vs. the exact two-path resistor network | matches to 1e-6 (relative) |
+| Package + board + convection on the JEDEC JESD51-7 2s2p board, still air, vs. published θJA (SOIC-8 ≈ 120, LQFP-100 ≈ 45, TO-252 ≈ 45, QFN-32 ≈ 33, FCBGA 35 ≈ 9.5 K/W; TI, ST, Microchip datasheets) | within 8 % for all 8 packages |
 | Energy balance (heat to air + chassis vs. power) | ~1e-12 |
-| Grid convergence (coarse vs. fine) on the example | 1.1 % of the junction rise |
+| Grid convergence (coarse vs. fine) on the example | 0.8 % of the junction rise |
 | Every standard fix lowers the hot junction (vias, 2 oz, +2 layers, airflow, chassis) | passes |
 | Calibration on synthetic readings (truth h × 0.75, k × 0.60) | recovers 0.7500 ± 0.3 % and 0.6000 ± 1 %, every junction within 0.01 °C, adequacy "consistent" |
 | Calibration on corrupted readings | flagged "model and measurements disagree", σ inflated ×>3 |
@@ -119,8 +120,8 @@ Example board: 160 × 100 mm, 6 layers, 13.8 W, vertical, natural convection, 35
 | Run | Time | Result |
 |---|---|---|
 | Quick solve | 0.85 s | — |
-| Full report | 2.2 s | FPGA 106.4 °C (band 99.9–115.8) vs. Tj,max 100 → fails |
-| What-if | 5.4 s | chassis −15.2 °C · 1 m/s −13.3 °C · 8 layers −3.9 °C · 64 vias −3.5 °C · 2 oz −2.4 °C |
+| Full report | 2.1 s | FPGA 99.1 °C (band 92.8–108.4) vs. Tj,max 100 → marginal; the LDO in SOIC-8 at 0.6 W reaches 121.8 °C |
+| What-if | 5.9 s | chassis −15.7 °C · 1 m/s −12.8 °C · 8 layers −3.9 °C · 64 vias −3.5 °C · 2 oz −2.4 °C |
 | Calibration | ≈12 s | — |
 
 ## Limitations (stated in the app)
@@ -129,7 +130,7 @@ Example board: 160 × 100 mm, 6 layers, 13.8 W, vertical, natural convection, 35
   calibrate.
 - Air temperature is uniform: there is no downstream pre-heating along the airflow and no shadowing by
   tall parts. Enclosures are represented only through calibration of the cooling scale.
-- Package θ values are typical per package family. Enter the datasheet θJB/θJC for sign-off.
+- Package θ values are typical per package family (published θJA spans about ±25 % within one family, depending on die size). Enter the datasheet θJB/θJC for sign-off.
 - Copper coverage is uniform per layer. Local pours and cut-outs aren't modelled (an import of
   Gerber/ODB++ copper maps is the natural next step).
 - Steady state only.
