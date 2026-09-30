@@ -36,6 +36,60 @@ def _downsample(a: np.ndarray, n: int = 64) -> List[List[float]]:
     return np.round(a[np.ix_(iy, ix)], 2).tolist()
 
 
+VALIDATION = [
+    "Solver vs. the exact resistor-network solution: agreement to 1e-6",
+    "Default packages on the JEDEC JESD51-7 test board vs. published datasheet θJA: "
+    "within 8 % for all 8 packages",
+    "Energy balance of every solve: better than 1e-11; grid convergence checked on every report",
+    "Calibration recovers known cooling and copper factors from synthetic measurements to < 1 %",
+]
+
+
+def model_scope(comps: List[Component], env: Environment) -> Dict[str, Any]:
+    """What the model covers, which way each simplification errs, what to do
+    about it today and what is planned -- shown in every report."""
+    items = []
+    typical = [c.name for c in comps if c.theta_jb is None or c.theta_jc is None]
+    if typical:
+        items.append({
+            "topic": "Package thermal data", "effect": "check",
+            "detail": f"{len(typical)} of {len(comps)} parts ({', '.join(typical[:4])}"
+                      f"{', ...' if len(typical) > 4 else ''}) use typical values for their package, "
+                      "calibrated to published JEDEC data. Within one package type, die size moves "
+                      "real parts by about ±25 %.",
+            "today": "Enter θJB and θJC(top) from each datasheet for sign-off.",
+            "planned": "Package library by manufacturer part number."})
+    items.append({
+        "topic": "Enclosure", "effect": "optimistic",
+        "detail": "The board sits in open air at the ambient temperature you enter. Inside a closed "
+                  "box the local air is warmer and moves less.",
+        "today": "Enter the air temperature inside the enclosure, or calibrate with 3+ measured "
+                 "points — the Calibrate tab fits the real cooling of your product.",
+        "planned": "Enclosure model (vents, walls, internal air rise)."})
+    if env.air_velocity_m_s > 0:
+        items.append({
+            "topic": "Air heating along the flow", "effect": "optimistic",
+            "detail": "The same air temperature is used over the whole board. Parts downstream of "
+                      "hot parts see warmer air.",
+            "today": "For downstream parts, raise the ambient by the upstream air rise "
+                     "(power / (mass flow x cp)).",
+            "planned": "Air temperature rise along the flow direction."})
+    items.append({
+        "topic": "Copper layout", "effect": "check",
+        "detail": "Each layer's copper is spread evenly at the coverage you enter. Local pours "
+                  "under hot parts spread heat better; splits and cut-outs spread it worse.",
+        "today": "Enter the coverage of the area around the hot parts; add thermal vias where used.",
+        "planned": "Import of real copper from Gerber / ODB++."})
+    items.append({
+        "topic": "Steady state", "effect": "check",
+        "detail": "Continuous power. Short bursts run cooler than shown.",
+        "today": "Use average power for duty-cycled parts, peak power for sign-off.",
+        "planned": "Transient response to power profiles."})
+    return {"validated": VALIDATION, "items": items,
+            "band": f"±{int(H_BAND * 100)} % on the surface cooling (typical correlation accuracy) "
+                    "is already included in the verdict; calibration replaces it with your measured value."}
+
+
 def evaluate(board: Board, comps: List[Component], env: Environment, *, quick: bool = False,
              n_cells: int = 60) -> Dict[str, Any]:
     """``quick``: one solve on a coarser grid (interactive dragging). Full: band + checks."""
@@ -104,6 +158,7 @@ def evaluate(board: Board, comps: List[Component], env: Environment, *, quick: b
     else:
         out["verdict"] = {"status": "meets", "text": "All components stay below Tj,max even with "
                           f"{int(H_BAND * 100)}% weaker surface cooling."}
+    out["scope"] = model_scope(comps, env)
     out["field3d"] = field_3d(board, out)
     out["method"] = ("3D finite volumes, one cell per copper/dielectric layer; JEDEC two-resistor "
                      "component models; convection (Churchill-Chu / flat-plate) + radiation, "

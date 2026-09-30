@@ -20,10 +20,12 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 VENDOR = os.path.join(os.path.dirname(__file__), "static", "vendor")
+SHARED = os.path.join(os.path.dirname(__file__), "static", "shared")
 
 
 def install(app: FastAPI, prefix: str) -> None:
-    """Optional HTTP Basic login + the shared ``/vendor`` static files (three.js)."""
+    """Optional HTTP Basic login + the shared static files: ``/vendor`` (three.js)
+    and ``/shared`` (UI pieces common to every app)."""
     app.state.auth_user = os.environ.get(f"{prefix}_USER")
     app.state.auth_password = os.environ.get(f"{prefix}_PASSWORD")
 
@@ -45,6 +47,7 @@ def install(app: FastAPI, prefix: str) -> None:
         return await call_next(request)
 
     app.mount("/vendor", StaticFiles(directory=VENDOR), name="vendor")
+    app.mount("/shared", StaticFiles(directory=SHARED), name="shared")
 
 
 class BusyLimiter:

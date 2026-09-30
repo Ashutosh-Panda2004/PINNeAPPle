@@ -191,8 +191,8 @@ function renderEval(r) {
       </div>
     </div>
     ${r.warnings.length ? `<div class="warnings">${r.warnings.map((w) => `<div>⚠ ${esc(w)}</div>`).join("")}</div>` : ""}
-    <p class="meta"><b>Method.</b> ${esc(r.method)} Uncertainty band: ±${fmt(r.details.h_uncertainty_band * 100, 0)}% on the convection coefficient
-      (typical correlation accuracy — an engineering assumption, not a measurement).</p>`;
+    ${window.renderScope ? renderScope(r.scope) : ""}
+    <p class="meta"><b>Method.</b> ${esc(r.method)}</p>`;
   drawMap(r.temperature_map);
   show3d(r.field3d);
 }

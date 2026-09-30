@@ -126,6 +126,9 @@ Example board: 160 × 100 mm, 6 layers, 13.8 W, vertical, natural convection, 35
 
 ## Limitations (stated in the app)
 
+Every report ends with a **Model scope & validation** panel (collapsed by default, and included when printed). It lists the independent checks the model passed, then each assumption that applies to *this* case with four things: what the assumption is, which way it errs (conservative, can read low, or to confirm), what to do about it today, and the roadmap item that removes it. The text comes from `engine.model_scope()`.
+
+
 - Surface correlations are typically ±20 %. That is the band shown, and it is an assumption until you
   calibrate.
 - Air temperature is uniform: there is no downstream pre-heating along the airflow and no shadowing by

@@ -118,6 +118,9 @@ OpenAPI docs at `/docs`.
 
 ## Limitations (shown to the user, not hidden)
 
+Every report ends with a **Model scope & validation** panel (collapsed by default, and included when printed). It lists the independent checks the model passed, then each assumption that applies to *this* case with four things: what the assumption is, which way it errs (conservative, can read low, or to confirm), what to do about it today, and the roadmap item that removes it. The text comes from `engine.model_scope()`.
+
+
 - **Forced flow is assumed ducted** (shroud). Without a shroud, bypass flow can cut
   performance by 20–50 %; a bypass model is on the roadmap.
 - **Laminar channel flow**; beyond Re ≈ 2300 the result is conservative.

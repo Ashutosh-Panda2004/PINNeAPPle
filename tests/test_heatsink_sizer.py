@@ -212,3 +212,16 @@ def test_natural_convection_matches_elenbaas_and_optimum_spacing():
         pfh.HeatSinkGeometry(0.1, 0.1, 0.005, n, 0.002, 0.03), op)["r_total_k_w"])
     gap = (0.1 - best * 0.002) / (best - 1)
     assert gap == pytest.approx(s_opt, rel=0.15)
+
+
+def test_report_scope_is_specific_to_the_cooling_mode():
+    from heatsink_sizer.engine import DesignInput, OperatingInput, evaluate_design
+    forced = evaluate_design(DesignInput(80, 80, 6, 30, 1.2, 35), OperatingInput(100, 25, 2, 30, 30))
+    natural = evaluate_design(DesignInput(100, 100, 5, 12, 2, 30), OperatingInput(20, 25, 0, 30, 30))
+    topics = lambda r: {i["topic"]: i["effect"] for i in r["scope"]["items"]}  # noqa: E731
+    assert topics(forced)["Air bypass"] == "optimistic" and "Thermal radiation" not in topics(forced)
+    assert topics(natural)["Thermal radiation"] == "conservative" and "Air bypass" not in topics(natural)
+    for r in (forced, natural):
+        assert len(r["scope"]["validated"]) >= 4
+        assert all(i["today"] and i["planned"] for i in r["scope"]["items"])
+        assert not any(w.startswith(("Radiation is neglected", "Assumes")) for w in r["warnings"])

@@ -288,8 +288,8 @@ function renderReport(r) {
       </div>
     </div>
     ${r.warnings.length ? `<div class="warnings">${r.warnings.map((w) => `<div>⚠ ${esc(w)}</div>`).join("")}</div>` : ""}
-    <p class="meta"><b>Method.</b> ${esc(r.method)} The band is ±20% on the surface coefficients (typical correlation
-      accuracy — an assumption; calibrate to measurements to remove it). Package θ values are typical unless you entered datasheet values.</p>`;
+    ${window.renderScope ? renderScope(r.scope) : ""}
+    <p class="meta"><b>Method.</b> ${esc(r.method)}</p>`;
   show3d(r.field3d);
 }
 

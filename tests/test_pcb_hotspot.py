@@ -232,3 +232,16 @@ def test_api_basic_auth_and_busy_limit(client, monkeypatch):
     api._HEAVY.slots.acquire()
     assert c.post("/api/whatif", json=CASE, headers=good).status_code == 429
     api._HEAVY.slots.release()
+
+
+def test_report_scope_lists_what_applies_to_this_case():
+    board, comps = example()
+    r = evaluate(board, comps, ENV, quick=False)
+    topics = {i["topic"]: i for i in r["scope"]["items"]}
+    assert "LDO" in topics["Package thermal data"]["detail"]
+    assert topics["Enclosure"]["effect"] == "optimistic"
+    assert "Air heating along the flow" not in topics                      # natural convection
+    fan = evaluate(board, comps, pt.Environment(35.0, air_velocity_m_s=1.5))
+    assert "Air heating along the flow" in {i["topic"] for i in fan["scope"]["items"]}
+    sheet = [Component(**{**c.__dict__, "theta_jb": 5.0, "theta_jc": 5.0}) for c in comps]
+    assert "Package thermal data" not in {i["topic"] for i in evaluate(board, sheet, ENV)["scope"]["items"]}

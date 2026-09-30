@@ -142,6 +142,59 @@ def field_3d(g: HeatSinkGeometry, op: OperatingInput, fvm: Dict[str, Any],
     }
 
 
+# Model assumptions are reported once, in the structured "scope" block, not as warnings.
+_SCOPE_WARNINGS = ("Radiation is neglected", "Assumes vertical fins", "Assumes ducted flow")
+
+VALIDATION = [
+    "Base conduction: 3D finite volumes vs. Lee et al. (1995) spreading theory, 1-5 %",
+    "Forced convection: vs. an independent method (Stephan + ε-NTU), 0-5 % at 0.5-6 m/s",
+    "Natural convection: vs. Elenbaas (1942), 2 %; optimum fin gap vs. Bar-Cohen, within 6 %",
+    "Pressure drop: vs. developing-flow friction with entry/exit losses, 2-4 %",
+    "Energy balance of every solve: better than 1e-12",
+]
+
+
+def model_scope(mode: str) -> Dict[str, Any]:
+    """What the model covers, which way each simplification errs, what to do
+    about it today and what is planned -- shown in every report."""
+    items = []
+    if mode == "natural":
+        items.append({
+            "topic": "Thermal radiation", "effect": "conservative",
+            "detail": "Only convection is counted. Radiation removes an extra 10-25 % of the heat "
+                      "in still air (more with a black-anodised finish).",
+            "today": "Treat the result as an upper bound on temperature.",
+            "planned": "Radiation from the fin envelope with finish-dependent emissivity."})
+        items.append({
+            "topic": "Mounting orientation", "effect": "check",
+            "detail": "Fins vertical, air rising along the base depth -- the orientation natural-"
+                      "convection sinks are designed for.",
+            "today": "Horizontal or fins-across-gravity mounting runs hotter; keep extra margin.",
+            "planned": "Horizontal and inclined orientations."})
+    else:
+        items.append({
+            "topic": "Air bypass", "effect": "optimistic",
+            "detail": "All air passes between the fins, as with a shroud or a duct. In open flow "
+                      "part of the air goes around the sink.",
+            "today": "Use a shroud, or enter the air speed expected between the fins rather than "
+                     "the fan's free-stream speed.",
+            "planned": "Bypass model for unducted sinks (flow split by fin density)."})
+    items.append({
+        "topic": "Heat source", "effect": "check",
+        "detail": "Uniform heat flux over the footprint you enter, with the interface material "
+                  "resistance you enter.",
+        "today": "For a die smaller than its package lid, enter the die size as the footprint.",
+        "planned": "Multiple sources and non-uniform power maps."})
+    items.append({
+        "topic": "Steady state", "effect": "check",
+        "detail": "Continuous power. Short bursts run cooler than shown.",
+        "today": "Use the average power for duty-cycled loads, the peak for sign-off.",
+        "planned": "Transient response to power profiles."})
+    return {"validated": VALIDATION, "items": items,
+            "band": f"±{int(H_BAND * 100)} % on the convection coefficient (typical correlation "
+                    "accuracy) is already included in the verdict."}
+
+
 def evaluate_design(design: DesignInput, op: OperatingInput, *, grid: int = 48,
                     map_size: int = 40) -> Dict[str, Any]:
     g, o = design.geometry(), op.operating()
@@ -251,7 +304,8 @@ def evaluate_design(design: DesignInput, op: OperatingInput, *, grid: int = 48,
         },
         "field3d": field_3d(g, op, fvm, nominal, Ta),
         "checks": checks,
-        "warnings": nominal["warnings"],
+        "warnings": [w for w in nominal["warnings"] if not w.startswith(_SCOPE_WARNINGS)],
+        "scope": model_scope(nominal["mode"]),
         "details": {"dimensionless": nominal["dimensionless"], "material": nominal["material"],
                     "k_material_w_mk": nominal["k_material"],
                     "fvm_grid": fvm["grid"], "h_uncertainty_band": H_BAND},
