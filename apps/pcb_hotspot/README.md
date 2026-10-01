@@ -139,3 +139,7 @@ Every report ends with a **Model scope & validation** panel (collapsed by defaul
 - Steady state only.
 
 This is an engineering estimate. Confirm critical designs by test.
+
+## Author
+
+The "About the author" button and the footer credit read `apps/_shared/static/shared/author.json` (name, role, bio, email, LinkedIn URL), shared by every app. Edit that one file to change them; the LinkedIn button appears once `linkedin` is set.

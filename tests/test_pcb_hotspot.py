@@ -195,6 +195,8 @@ def test_api_endpoints(client):
     assert c.get("/").status_code == 200 and c.get("/static/app.js").status_code == 200
     assert c.get("/static/board3d.js").status_code == 200
     assert c.get("/vendor/three/three.module.min.js").status_code == 200
+    author = c.get("/shared/author.json").json()
+    assert author["email"] and c.get("/shared/author.js").status_code == 200
     q = c.post("/api/solve?quick=true", json=CASE)
     assert q.status_code == 200 and q.json()["quick"] and q.json()["critical"] == "FPGA"
     full = c.post("/api/solve", json=CASE).json()

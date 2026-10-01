@@ -138,3 +138,7 @@ Every report ends with a **Model scope & validation** panel (collapsed by defaul
 3. Bypass model for unshrouded heat sinks; radiation with emissivity.
 4. Vendor extrusion catalogue matching (closest off-the-shelf profile + cut length).
 5. Multiple heat sources and STEP export of the recommended design.
+
+## Author
+
+The "About the author" button and the footer credit read `apps/_shared/static/shared/author.json` (name, role, bio, email, LinkedIn URL), shared by every app. Edit that one file to change them; the LinkedIn button appears once `linkedin` is set.
