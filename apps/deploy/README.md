@@ -1,0 +1,92 @@
+# Deploy both apps on one server
+
+HeatSink Sizer and PCB Hotspot on a single Linux VM (e.g. Hetzner Cloud), each on its own
+subdomain, behind one Caddy that obtains and renews Let's Encrypt certificates automatically.
+
+```
+                       ┌──────────── server ────────────┐
+heatsink.example.org ─▶│ Caddy :80/:443 ─▶ heatsink:8080 │
+pcb.example.org      ─▶│                ─▶ pcb:8081      │
+                       └─────────────────────────────────┘
+```
+
+Only Caddy publishes ports. The apps are reachable only through it.
+
+## 1. Server
+
+- **Size:** 4 vCPU / 8 GB RAM is comfortable for both apps (e.g. Hetzner CX32 or CPX31). 2 vCPU / 4 GB works
+  for demos if you lower `*_MAX_*` to 1 and `*_MEM_LIMIT` to `1500m`.
+- **OS:** Ubuntu 24.04. Add your SSH key when creating it.
+- **Firewall:** allow inbound TCP 22, 80 and 443, plus UDP 443 for HTTP/3.
+
+## 2. DNS
+
+At your DNS provider, create two **A** records (and AAAA records if you use IPv6) pointing at the server's IP:
+
+| Name | Type | Value |
+|---|---|---|
+| `heatsink` | A | `<server IPv4>` |
+| `pcb` | A | `<server IPv4>` |
+
+If the zone is on Cloudflare, set both records to **DNS only** (grey cloud) for the first start, so
+Let's Encrypt can reach Caddy. Check propagation with `dig +short heatsink.example.org`.
+
+## 3. Docker
+
+```bash
+ssh root@<server IP>
+curl -fsSL https://get.docker.com | sh
+```
+
+## 4. Code and configuration
+
+```bash
+git clone https://github.com/PINNeAPPle-Labs/PINNeAPPle.git /opt/pinneapple
+cd /opt/pinneapple/apps/deploy
+cp .env.example .env
+nano .env        # domains, ACME e-mail, logins (use long passwords)
+```
+
+| Variable | Meaning |
+|---|---|
+| `HSS_DOMAIN`, `PCB_DOMAIN` | Public hostnames (must match the DNS records) |
+| `ACME_EMAIL` | Let's Encrypt account / expiry notices |
+| `HSS_USER` / `HSS_PASSWORD`, `PCB_USER` / `PCB_PASSWORD` | HTTP Basic login per app. If either is empty, that app is public. `/health` is always public. |
+| `HSS_MAX_SIZING`, `PCB_MAX_HEAVY` | Concurrent heavy runs per app. Any excess gets HTTP 429. |
+| `HSS_MEM_LIMIT`, `PCB_MEM_LIMIT` | Container memory caps |
+
+## 5. Start
+
+```bash
+docker compose up -d --build     # first build takes a few minutes (PyTorch CPU wheels)
+docker compose ps
+docker compose logs -f caddy     # wait for "certificate obtained successfully"
+```
+
+Open `https://heatsink.example.org` and `https://pcb.example.org`.
+
+## Operations
+
+| Task | Command (in `apps/deploy`) |
+|---|---|
+| Update to the latest code | `git pull && docker compose up -d --build` |
+| Logs | `docker compose logs -f heatsink` (or `pcb`, `caddy`) |
+| Change a password | edit `.env`, then `docker compose up -d` |
+| Restart | `docker compose restart` |
+| Stop | `docker compose down` (certificates stay in the `caddy_data` volume) |
+| Reclaim disk after many builds | `docker image prune -f` |
+
+The containers restart automatically after a reboot (`restart: unless-stopped`).
+
+## Notes
+
+- **Per-app deploy folders.** `apps/heatsink_sizer/deploy` and `apps/pcb_hotspot/deploy` each start their own
+  Caddy on ports 80/443. Use this folder *instead of* them, not alongside them.
+- **More sites.** To serve a landing page (e.g. the apex domain) from the same server, add a site block to
+  `Caddyfile`, for instance `example.org { root * /srv/site; file_server }`, and mount the folder into the
+  `caddy` service.
+- **Cloudflare proxy.** After the certificates are issued you can switch the records to proxied (orange cloud).
+  If you do, set SSL/TLS mode to **Full (strict)**.
+- **Tested.** `docker compose config` and `caddy validate` pass. Routing was also checked end to end with
+  Caddy's internal CA in place of Let's Encrypt: both hosts work, the login is enforced, `/health` is open,
+  responses are gzip-compressed, HTTP redirects to HTTPS, and `/api/solve` runs through the proxy.

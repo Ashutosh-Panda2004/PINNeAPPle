@@ -1,0 +1,53 @@
+# HeatSink Sizer + PCB Hotspot on one server, behind one Caddy (automatic HTTPS).
+#
+#   cp .env.example .env      # set the domains, logins and e-mail
+#   docker compose up -d --build
+#
+# Needs ports 80 and 443 open and a DNS A record for each domain pointing at
+# this server. See README.md for the full walkthrough.
+name: pinneapple-apps
+
+services:
+  heatsink:
+    build:
+      context: ../..                          # repository root
+      dockerfile: apps/heatsink_sizer/Dockerfile
+    image: pinneapple/heatsink-sizer:latest
+    restart: unless-stopped
+    environment:
+      HSS_USER: ${HSS_USER:-}
+      HSS_PASSWORD: ${HSS_PASSWORD:-}
+      HSS_MAX_SIZING: ${HSS_MAX_SIZING:-2}
+    expose: ["8080"]
+    mem_limit: ${HSS_MEM_LIMIT:-2g}
+
+  pcb:
+    build:
+      context: ../..
+      dockerfile: apps/pcb_hotspot/Dockerfile
+    image: pinneapple/pcb-hotspot:latest
+    restart: unless-stopped
+    environment:
+      PCB_USER: ${PCB_USER:-}
+      PCB_PASSWORD: ${PCB_PASSWORD:-}
+      PCB_MAX_HEAVY: ${PCB_MAX_HEAVY:-2}
+    expose: ["8081"]
+    mem_limit: ${PCB_MEM_LIMIT:-2g}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      HSS_DOMAIN: ${HSS_DOMAIN:?set HSS_DOMAIN in .env}
+      PCB_DOMAIN: ${PCB_DOMAIN:?set PCB_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # certificates: keep this volume
+      - caddy_config:/config
+    depends_on: [heatsink, pcb]
+
+volumes:
+  caddy_data:
+  caddy_config:
