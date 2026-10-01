@@ -1,0 +1,23 @@
+# Use when the server already runs a reverse proxy (e.g. another Caddy) on 80/443.
+# Starts only the two apps and attaches them to that proxy's Docker network:
+#
+#   PROXY_NETWORK=<network of the existing proxy> \
+#   docker compose -f docker-compose.yml -f docker-compose.existing-proxy.yml up -d --build heatsink pcb
+#
+# Then point the proxy at pinneapple-heatsink:8080 and pinneapple-pcb:8081 (see README.md).
+services:
+  heatsink:
+    networks:
+      default: {}
+      proxy:
+        aliases: [pinneapple-heatsink]
+  pcb:
+    networks:
+      default: {}
+      proxy:
+        aliases: [pinneapple-pcb]
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:?set PROXY_NETWORK to the existing proxy's Docker network}
