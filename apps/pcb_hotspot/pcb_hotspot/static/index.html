@@ -106,9 +106,16 @@
       <div class="panel form">
         <h2>Measurements</h2>
         <p class="hint">One per line. Board points: <code>x_mm, y_mm, T_°C[, top|bottom]</code> (thermocouple or IR
-          spot). Junction readings: <code>ComponentName, T_°C</code> (on-die sensor). With 5+ points, 20% are
+          spot). Junction readings: <code>ComponentName, T_°C</code> (on-die sensor). Enter at least 2 readings (3+ to check the fit). With 5+, 20% are
           held out to test the calibrated model.</p>
-        <textarea id="meas" rows="12" placeholder="20, 80, 61.2&#10;80, 20, 66.0&#10;FPGA, 118.5"></textarea>
+        <textarea id="meas" rows="12" placeholder="20, 80, 61.2&#10;80, 20, 66.0&#10;FPGA, 118.5"># Example readings for the example board (edit or replace with yours)
+20, 20, 70.3
+85, 85, 77.3
+62, 15, 76.5
+125, 52, 70.4
+40, 52, 88.0
+150, 50, 66.5
+FPGA, 111.2</textarea>
         <label>Measurement uncertainty <span class="u">°C (1σ)</span><input id="noise" type="number" step="any" value="1.0"></label>
         <button class="primary" type="button" id="run-cal">Calibrate model</button>
         <p class="hint">Fits two physical unknowns with PINNeAPPle's Ensemble Kalman Inversion: the real surface

@@ -344,6 +344,10 @@ $("#run-cal").addEventListener("click", async (e) => {
   const btn = e.target;
   let meas;
   try { meas = parseMeasurements($("#meas").value); } catch (err) { alert(err.message); return; }
+  if (meas.length < 2) {
+    $("#cal-results").innerHTML = `<p class="err">Enter at least 2 readings, one per line (you entered ${meas.length}). The calibration fits two unknowns, so it needs at least two measurements; 3+ also checks the fit, 5+ holds some out.</p>`;
+    return;
+  }
   btn.disabled = true; btn.textContent = "Calibrating (≈10–20 s)…";
   try { renderCal(await post("/api/calibrate", { ...caseBody(), measurements: meas, noise_std_c: Number($("#noise").value) })); }
   catch (err) { $("#cal-results").innerHTML = `<p class="err">${esc(err.message)}</p>`; }

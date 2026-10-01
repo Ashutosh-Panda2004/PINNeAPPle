@@ -347,7 +347,11 @@ def calibrate(board: Board, comps: List[Component], env: Environment,
                             "meaning": "multiplier on in-plane conductivity (copper coverage / quality)"},
     }
     warnings = []
-    if chi2_red <= 2:
+    if len(fit) <= 2:
+        adequacy = "not testable with 2 readings"
+        warnings.append("With 2 readings the two unknowns are fitted exactly, so the readings cannot show whether "
+                        "the model fits this board. Add a third reading to check it, and 5+ to hold some out.")
+    elif chi2_red <= 2:
         adequacy = "consistent"
     elif chi2_red <= 10:
         adequacy = "residuals above the stated noise"

@@ -171,6 +171,15 @@ def test_calibration_flags_inconsistent_data_and_inflates_uncertainty():
     assert c["adequacy"]["uncertainty_inflation"] > 3 and c["warnings"]
 
 
+
+def test_calibration_with_two_readings_says_fit_is_untestable():
+    board, comps = example()
+    _, meas = _synthetic(board, comps)
+    c = calibrate(board, comps, ENV, meas[:2], noise_std_c=0.3)
+    assert c["adequacy"]["status"] == "not testable with 2 readings"
+    assert any("third reading" in w for w in c["warnings"])
+    assert c["holdout"]["n"] == 0
+
 # ── API ──────────────────────────────────────────────────────────────────────
 
 CASE = {"board": {"width_mm": 160, "depth_mm": 100, "n_copper": 6},
