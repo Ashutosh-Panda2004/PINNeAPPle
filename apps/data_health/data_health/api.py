@@ -146,8 +146,8 @@ def api_example_csv():
 OPT_VALIDATION = [
     "Simulated chilled-water plant with known physics (60 days, 15-min, operators' manual setpoint habits): the "
     "model predicts plant power within 4.3 kW MAE (R² 0.99) on the last 15 days it never saw",
-    "Predicted saving 8.3 % (bootstrap range 6.9–8.3 %) against a true saving of 9.0 % when the recommended "
-    "setpoints are run through the plant's real physics: the estimate errs on the conservative side",
+    "Predicted saving 8.3 % against a true 9.0 % for the example's seed. Over 8 further independent simulations the "
+    "predicted saving averages 9.8 % against 9.7 % true (bias +0.1 points, worst case 1.2 points, in either direction)",
     "The CHW return-temperature limit, violated 4.0 % of the time by the operators, is violated 0.2 % of the "
     "time with the recommendations",
 ]
@@ -165,6 +165,12 @@ def opt_scope() -> dict:
                  "today": "Run the recommended schedule on alternate days (A/B) for 2-4 weeks and compare measured "
                           "consumption at equal weather and load.",
                  "planned": "Built-in trial planner and measurement & verification (IPMVP option B) report."},
+                {"topic": "Model fit", "effect": "check",
+                 "detail": "Training error (2.1 kW) is below the sensor-noise floor (about 2.8 kW): the model fits a little "
+                           "noise. The saving estimate uses the held-out error (4.3 kW), which includes that effect. "
+                           "Outside the operated range the error grows by about 30 %.",
+                 "today": "Judge the model by the held-out numbers; collect data at new setpoints before trusting them.",
+                 "planned": "Time-series cross-validation to tune regularization automatically."},
                 {"topic": "Only inside past operation", "effect": "conservative",
                  "detail": "Recommendations are restricted to lever + context combinations similar to recorded ones, and "
                            "each move is limited. Larger savings outside that envelope are not explored.",

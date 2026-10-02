@@ -50,7 +50,8 @@ The **Optimize** tab turns clean operating data into setpoint recommendations:
 
 **Validation.** The example is a simulated chilled-water plant with known physics: 60 days of 15-minute data, with operators' manual setpoint habits.
 - The model predicts plant power within 4.3 kW MAE (R² 0.99) on the last 15 days.
-- The predicted saving is 8.3 % (range 6.9–8.3 %). Running the recommended setpoints through the true physics gives 9.0 %.
+- The predicted saving is 8.3 % (range 6.9–8.3 %). Running the recommended setpoints through the true physics gives 9.0 %. Over 8 further independent simulations, the predicted saving averages 9.8 % against 9.7 % true (bias +0.1 points, worst case 1.2 points, in either direction).
+- Fit: training error (2.1 kW) is below the sensor-noise floor (about 2.8 kW), so the model fits a little noise. Held-out error is 4.3 kW and stable across five rolling windows (4.2–4.4 kW); outside the operated range it grows to 5.6 kW.
 - The CHW return-temperature limit goes from 4.0 % of the time violated to 0.2 %.
 
 Savings on real plants are model estimates from historical correlations. Confirm them with a supervised A/B trial before automating.
