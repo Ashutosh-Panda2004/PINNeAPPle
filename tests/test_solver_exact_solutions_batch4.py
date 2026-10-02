@@ -27,7 +27,20 @@ from pinneapple_systems.process_components.similarity_map import (
 )
 
 
-def _on_boundary(p, tol=1e-6):
+@pytest.fixture(autouse=True)
+def _cpu_device():
+    """Pin the default device to CPU for this module: MPS doesn't support float64 (used by the
+    Kansa/eddy-current tests below), and some earlier test in a full `pytest tests/` run leaves the
+    global default device set to "mps" -- a pre-existing, documented test-isolation gap, not
+    something this batch introduced (same workaround as
+    tests/test_gradient_backend_consistency.py's `_float64_cpu` fixture)."""
+    prev = torch.get_default_device()
+    torch.set_default_device("cpu")
+    yield
+    torch.set_default_device(prev)
+
+
+def _on_boundary(p, *, tol=1e-6):
     return (p[:, 0] < tol) | (p[:, 0] > 1 - tol) | (p[:, 1] < tol) | (p[:, 1] > 1 - tol)
 
 

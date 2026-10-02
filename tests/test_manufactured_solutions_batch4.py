@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 import torch
 import torch.nn as nn
 
@@ -14,6 +15,18 @@ from pinneapple_physics.pde_environment.spec import PDETermSpec, ProblemSpec
 from pinneapple_physics.pinn_solver.compiler.compile import compile_problem
 
 DT = torch.float64
+
+
+@pytest.fixture(autouse=True)
+def _cpu_device():
+    """Pin the default device to CPU: this module is float64 throughout and MPS doesn't support
+    float64. Some earlier test in a full `pytest tests/` run leaves the global default device set
+    to "mps" -- a pre-existing, documented test-isolation gap, not something this batch introduced
+    (same workaround as tests/test_gradient_backend_consistency.py's `_float64_cpu` fixture)."""
+    prev = torch.get_default_device()
+    torch.set_default_device("cpu")
+    yield
+    torch.set_default_device(prev)
 
 
 class _Exact(nn.Module):

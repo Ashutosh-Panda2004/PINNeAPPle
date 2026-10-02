@@ -2092,3 +2092,80 @@ unmodified; the integration point chosen was
 `PhysicsConfidenceScore`/`ConfidenceComponent`, since that is the
 componentized aggregator this task's own instructions pointed at and the
 one `evidence_graph.py` already consumes generically.
+
+## Validation batch 4: 9 catalog items validated, 4 real bugs fixed, and 2 known gaps documented but not fixed (2026-09-28)
+
+Method-catalog validation continues (D5 of `PEDIDOS_2026-09-24.md`): 84 validated / 53 tested / 42
+untested, up from 75/53/51 at the 0.6.1 release. New exact-solution tests:
+`tests/test_manufactured_solutions_batch4.py` (Buckley-Leverett two-phase flow, neo-Hookean
+hyperelasticity, thermoelasticity, Biot poroelasticity, Heston) and
+`tests/test_solver_exact_solutions_batch4.py` (FEM Q1, Kansa RBF collocation, axisymmetric eddy
+current, compressor similarity map). Full derivations and measured before/after numbers are in
+each test's docstring; not repeated here.
+
+**4 real bugs found and fixed**, each caught by a manufactured/exact-solution test, not by
+inspection:
+- Kansa's multiquadric RBF Laplacian used `(d-2)` instead of the correct `(d-1)` in
+  `Delta phi = eps^2(d + (d-1)eps^2 r^2)/phi^3` — the solver's error was stuck around 0.06
+  regardless of refinement (a "wrong equation" signature, not a convergence issue). Fixed; now
+  converges normally (n=8->16: 6.6e-4 -> 1.8e-5).
+- The neo-Hookean compiler residual differentiated the Cauchy stress in REFERENCE coordinates
+  instead of the first Piola-Kirchhoff stress P (the correct total-Lagrangian form is
+  `Div_X P + b0 = 0`; the Piola identity `Div_X P = J div_x sigma` means the two are not
+  interchangeable once you differentiate). Manufactured-solution residual went from 0.028 to 4.5e-32
+  on the identical field after the fix — a real, non-trivial (~6% of the manufactured body force's
+  magnitude) finite-strain error, not round-off.
+- `axial_flux_density` (eddy-current FDM) returned `-B_z` and silently discarded the imaginary
+  (quadrature) part of a complex vector-potential phasor. Fixed; now exact to 1e-10 on a uniform
+  complex test field.
+- FEM (`fem.py`) and Kansa (`meshfree.py`) could not accept ANY Dirichlet boundary condition through
+  the normal `ProblemSpec` path: both did `isinstance(cond, DirichletBC)`, but `DirichletBC` (in
+  `pde_environment/conditions.py`) is a factory FUNCTION returning a `ConditionSpec`, not a class —
+  the isinstance call itself raised `TypeError`. Fixed with a new shared module,
+  `pinneapple_simulation/numerical_solvers/_bc.py`, that checks `cond.kind == "dirichlet"` and
+  dispatches the selector/value_fn callables (which come in two different calling conventions in
+  this codebase — see the module's own docstring) by inspecting their SIGNATURE, not by calling them
+  and catching `TypeError` (an earlier version of this same helper did that, and it silently
+  swallowed a real bug inside a correctly-shaped callable during this session's own test-writing —
+  see the module docstring for the concrete example).
+
+**Known gap, documented, deliberately NOT fixed this session**:
+`pinneapple_simulation/numerical_solvers/immersed_boundary_fdm.py`'s "channel" boundary-condition
+mode does not conserve mass. Measured (pipe R=0.5, L=3, Re=10, 60x22x22 grid, 1500 steps): flow
+rate falls to 0.71 / 0.45 / 0.34 of the inlet value along the pipe (divergence_rms 0.86). Root
+cause: the solver uses a divergence-penalty relaxation for the pressure step rather than a true
+pressure-Poisson projection (which `solve_ibm_external_flow` already has, for comparison). Fixing
+this is real, separate numerical-methods work — documented in the module's own docstring so it
+isn't silently rediscovered later. Catalog item S12 (immersed boundary) stays untested for this
+reason: the method runs and produces a plausible-looking parabolic profile shape (centre/mean ratio
+~2.1-2.2 vs the exact 2.0 for Poiseuille flow), which is exactly the kind of "looks right, isn't
+quantitatively right" case Tier A alone would never catch.
+
+**Known gap, investigated at length, root cause NOT found**: the pre-existing PyTorch
+default-device leak to `"mps"` between test files (first documented in this report's "Geometry OOD
+guardrail" section above, for `test_calibration_component_*`) is much more widespread than
+previously known. Running the 37 test files touched by/related to this batch as a single `pytest`
+invocation: **80 of ~1021 tests failed**, and manual inspection of 10+ of them across 6 different,
+otherwise-unrelated test files (`test_stochastic.py`, `test_preset_authoring.py`,
+`test_physics_guardrail.py`, `test_manufactured_solutions.py`, `test_breadth_six_packages.py`, and
+this batch's own new tests) showed the SAME `torch.utils._device.DeviceContext`-based failure
+signature in every case. **New finding this session: the leaked context is not a single leak
+point** — the Python object identity of the leaked `DeviceContext` differs between different
+failure clusters in the same run (`0x155f6ff20` vs `0x12ccb67b0` observed), meaning the pollution
+is pushed more than once by different code paths, not "one test sets a global and nothing ever
+resets it". A targeted search (`grep -rn "set_default_device"` and `grep -rn "with torch.device("`
+across every `pinneapple_*` package and `tests/`) found no un-scoped call anywhere — the only
+`set_default_device` call in the entire tree is the already-correctly-scoped defensive fixture in
+`tests/test_gradient_backend_consistency.py`. Root-causing this would need either a bisection of the
+test-file execution order or instrumenting PyTorch's `TorchFunctionMode` push/pop directly — out of
+scope for this session's actual task (finish batch 4, ship 0.6.2), so it was worked around locally
+(both new batch-4 test files now pin the default device to CPU via an autouse fixture, the same
+pattern `test_gradient_backend_consistency.py` already uses) rather than fixed at the source. **This
+is worth a dedicated session**: it is currently making ~74 tests report FAILED for a reason that has
+nothing to do with what they're actually checking, which quietly erodes how much a green (or red)
+full-suite run can be trusted.
+
+Regression discipline used to confirm the above didn't introduce anything new: the same 37-file set
+was run twice (before and after this session's 3 test-infrastructure fixes), and the FAILED test-ID
+**sets** were diffed (not just counts) — see this branch's `.agent/CURRENT_STATE.md` for the actual
+numbers once the second run finishes.

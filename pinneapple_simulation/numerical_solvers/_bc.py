@@ -7,6 +7,7 @@ arrays; older call sites pass one-argument callables on tensors. Both are accept
 """
 from __future__ import annotations
 
+import inspect
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -17,12 +18,27 @@ def dirichlet_conditions(spec) -> List:
     return [c for c in getattr(spec, "conditions", ()) if getattr(c, "kind", None) == "dirichlet"]
 
 
+def _accepts_two_positional(fn) -> bool:
+    """Whether ``fn`` can be called as fn(X, ctx) -- checked by binding the SIGNATURE, not by
+    calling fn and catching TypeError: catching would also swallow a real TypeError raised from
+    inside a well-formed 2-argument fn (e.g. a bug in the caller's own selector/value_fn) and
+    misreport it as "fn takes 1 argument", masking the actual failure (observed while writing
+    tests/test_solver_exact_solutions_batch4.py: a bug elsewhere raised TypeError deep inside a
+    2-arg lambda, and the old try/except here reported a misleading "missing argument 'ctx'")."""
+    try:
+        inspect.signature(fn).bind(None, None)
+        return True
+    except TypeError:
+        return False
+    except ValueError:
+        return False  # signature not introspectable (e.g. some builtins): assume legacy 1-arg
+
+
 def _call(fn, pts: torch.Tensor):
     """Try the builder contract fn(X_numpy, ctx) first, then the legacy fn(X_tensor)."""
-    try:
+    if _accepts_two_positional(fn):
         return fn(pts.detach().cpu().numpy(), {})
-    except TypeError:
-        return fn(pts)
+    return fn(pts)
 
 
 def select(cond, pts: torch.Tensor, edges: Optional[Dict[str, torch.Tensor]] = None,
