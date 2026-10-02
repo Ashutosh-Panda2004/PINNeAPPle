@@ -1,0 +1,34 @@
+# PCB Hotspot behind Caddy (automatic HTTPS via Let's Encrypt).
+#   cp .env.example .env   # set DOMAIN, PCB_USER, PCB_PASSWORD
+#   docker compose up -d --build
+# Needs ports 80/443 open and DOMAIN's DNS A record pointing at this server.
+# To run next to HeatSink Sizer on one server, give each its own DOMAIN and
+# put both site blocks in a single Caddy (see README).
+services:
+  app:
+    build:
+      context: ../../..                       # repository root
+      dockerfile: apps/pcb_hotspot/Dockerfile
+    restart: unless-stopped
+    environment:
+      PCB_USER: ${PCB_USER:-}
+      PCB_PASSWORD: ${PCB_PASSWORD:-}
+      PCB_MAX_HEAVY: ${PCB_MAX_HEAVY:-2}
+    expose: ["8081"]
+    mem_limit: 2g
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+
+volumes:
+  caddy_data:
+  caddy_config:

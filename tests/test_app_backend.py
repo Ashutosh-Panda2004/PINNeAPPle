@@ -173,7 +173,7 @@ class TestModels:
 # 4. Experiments
 # ---------------------------------------------------------------------------
 
-def _launch(client, *, problem="heat_2d", model="vanilla_pinn", epochs=2,
+def _launch(client, *, problem="laplace_2d", model="vanilla_pinn", epochs=2,
             n_interior=50, n_boundary=25, n_initial=25,
             grid_resolution=8, use_solver=False) -> str:
     payload = {
@@ -219,7 +219,7 @@ class TestExperiments:
 
     def test_launch_queued_status(self, client):
         payload = {
-            "problem_name": "heat_2d",
+            "problem_name": "laplace_2d",
             "models": [{"name": "vanilla_pinn"}],
             "epochs": 2,
         }
@@ -230,7 +230,7 @@ class TestExperiments:
 
     def test_invalid_model_returns_422(self, client):
         payload = {
-            "problem_name": "heat_2d",
+            "problem_name": "laplace_2d",
             "models": "vanilla_pinn",   # should be a list of objects
         }
         r = client.post("/api/experiments/launch", json=payload)
@@ -244,6 +244,23 @@ class TestExperiments:
         assert "status" in body
         assert "progress" in body
         assert "experiment_id" in body
+
+    def test_unknown_preset_returns_404(self, client):
+        # Used to be accepted and trained with no physics at all (the preset
+        # lookup error was swallowed and spec left as None).
+        payload = {"problem_name": "__not_a_preset__", "models": [{"name": "vanilla_pinn"}]}
+        r = client.post("/api/experiments/launch", json=payload)
+        assert r.status_code == 404
+
+    def test_results_include_surrogate_report(self, client):
+        exp_id = _launch(client, epochs=2)
+        _wait_done(client, exp_id)
+        body = client.get(f"/api/experiments/{exp_id}/results").json()
+        report = body["reports"]["vanilla_pinn"]
+        for section in ("error", "convergence", "generalization", "variables",
+                        "weights", "uncertainty", "physics_checks", "verdict"):
+            assert section in report
+        assert body["leaderboard"][0]["verdict"] == report["verdict"]["status"]
 
     def test_status_404_for_unknown(self, client):
         r = client.get("/api/experiments/nonexistent_id/status")

@@ -89,11 +89,11 @@ def load_preset(preset_name: str) -> ProblemDefinition:
 
     meta = get_problem_meta(preset_name)
 
-    try:
-        from pinneapple_physics.pde_environment import get_preset
-        spec = get_preset(preset_name)
-    except Exception:
-        spec = None   # preset factory failed — continue without spec
+    from pinneapple_physics.pde_environment import get_preset
+    # Unknown names raise KeyError (the router turns it into a 404). This used
+    # to swallow the error and continue with spec=None, so a typo trained a
+    # model with no physics at all.
+    spec = get_preset(preset_name)
 
     bounds = (getattr(spec, "domain_bounds", {}) or {}) if spec is not None else {}
     # fallback bounds from metadata tags

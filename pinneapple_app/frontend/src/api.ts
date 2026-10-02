@@ -70,6 +70,56 @@ export interface BenchmarkPayload {
   charts: Record<string, string>   // base64 PNGs
   summary: string
   errors: Record<string, string>
+  reports?: Record<string, SurrogateReport>
+}
+
+// Surrogate quality report (backend: core/surrogate_report.py)
+export type CheckStatus = 'pass' | 'warn' | 'fail' | 'n/a'
+
+export interface PhysicsCheck {
+  name: string
+  law?: string
+  status: CheckStatus
+  value?: number | null
+  detail?: string
+}
+
+export interface SurrogateReport {
+  verdict: { status: 'trustworthy' | 'use_with_caution' | 'not_trustworthy'; reasons: string[] }
+  error: {
+    available?: boolean
+    reason?: string
+    rel_l2_pct?: number | null
+    r2?: number | null
+    n_test_points?: number
+    per_field?: Record<string, { rel_l2_pct?: number | null; max_abs_error?: number | null }>
+  }
+  convergence: { status: string; message?: string; reduction_factor?: number | null; epochs?: number }
+  generalization: { status: string; message?: string; worst_ratio?: number | null }
+  variables: {
+    inputs?: { name: string; min: number; max: number; role: string }[]
+    outputs?: {
+      name: string; pred_min?: number | null; pred_max?: number | null
+      expected_range?: [number, number]; trained_with?: string
+    }[]
+    input_sensitivity_pct?: Record<string, Record<string, number | null>>
+  }
+  weights: {
+    loss_terms?: { term: string; weight?: number | null; share_pct?: number | null }[]
+    imbalanced?: boolean
+    message?: string
+    network?: { n_params: number; non_finite: number }
+  }
+  uncertainty: {
+    snapshot_ensemble?: { per_field?: Record<string, { mean_std_pct_of_field_spread?: number | null }> }
+    conformal?: {
+      method?: string
+      reason?: string
+      per_field?: Record<string, { half_width_pct_of_range?: number | null; empirical_coverage_pct?: number | null }>
+    }
+  }
+  physics_checks: PhysicsCheck[]
+  warnings: string[]
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────

@@ -1,0 +1,42 @@
+/* Engineering Data Standardizer (base styles in /shared/app.css) */
+:root { --brand: #0e7490; }
+.logo { background: var(--brand); }
+input:focus, select:focus { outline: 2px solid #0e749033; }
+.layout { grid-template-columns: 360px 1fr; }
+.filelist { margin-top: 8px; display: grid; gap: 4px; }
+.filelist div { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; border: 1px solid var(--line);
+                border-radius: 7px; padding: 5px 8px; }
+.filelist button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; }
+.src { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+.src h3 { margin: 0 0 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.src .meta b { color: var(--ink); }
+.prev { overflow-x: auto; margin-top: 8px; }
+.prev table { font-size: 11.5px; } .prev td, .prev th { white-space: nowrap; font-family: var(--mono); padding: 3px 7px; }
+.srcopts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 14px; margin: 8px 0; }
+.maptable { overflow-x: auto; }
+.maptable table { font-size: 12.5px; }
+.maptable td { padding: 4px 5px; vertical-align: middle; }
+.maptable input, .maptable select { margin: 0; padding: 4px 6px; font-size: 12.5px; }
+.maptable input[type=checkbox] { width: auto; display: inline; }
+.maptable td.src-col { font-family: var(--mono); font-size: 12px; max-width: 230px; overflow-wrap: anywhere; }
+.maptable td.conv { font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.maptable tr.off td:not(:first-child) { opacity: .45; }
+.maptable .tgt { min-width: 190px; }
+.globalopts { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 14px; align-items: end; }
+.globalopts button.primary { margin-top: 0; }
+.tzwarn { color: var(--warn); font-size: 12px; font-weight: 600; }
+.agree td { vertical-align: top; }
+.charts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 1000px) { .charts2 { grid-template-columns: 1fr; } }
+.charts2 h4 { margin: 0 0 4px; font-size: 13px; }
+.dl { display: flex; flex-wrap: wrap; gap: 8px; }
+.dl button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 12px; font: inherit; font-size: 13px;
+             font-weight: 600; cursor: pointer; }
+.dl button:hover { border-color: var(--brand); color: var(--brand); }
+.dl button.main { background: var(--brand); color: #fff; border-color: var(--brand); }
+details.man summary { cursor: pointer; font-weight: 600; margin-top: 12px; }
+details.man pre { max-height: 360px; }
+.headtab { overflow-x: auto; } .headtab td, .headtab th { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; padding: 3px 8px; }
+.verdict { font-weight: 700; }
+.colpick { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.colpick select { width: auto; display: inline-block; margin: 0; }

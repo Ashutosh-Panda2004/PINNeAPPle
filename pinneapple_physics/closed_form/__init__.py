@@ -29,12 +29,22 @@ membrane_diffusion
     Fick's-first-law membrane-controlled diffusive release/transport.
 helmholtz_resonator
     Helmholtz-resonator (bass-reflex port) tuning equation.
+plate_fin_heatsink
+    Plate-fin heat sink: forced (Teertstra) / natural (Bar-Cohen)
+    convection, spreading resistance (Lee), pressure drop.
+pcb_thermal
+    PCB stack-up conductivity, thermal vias, JEDEC two-resistor packages
+    and board-surface convection + radiation.
 """
 from __future__ import annotations
 
-from . import cantilever_fatigue
-from . import fin_array_conduction
-from . import helmholtz_resonator
-from . import membrane_diffusion
+from . import (
+    cantilever_fatigue,
+    fin_array_conduction,
+    helmholtz_resonator,
+    membrane_diffusion,
+    pcb_thermal,
+    plate_fin_heatsink,
+)
 
-__all__ = ["fin_array_conduction", "cantilever_fatigue", "membrane_diffusion", "helmholtz_resonator"]
+__all__ = ["fin_array_conduction", "plate_fin_heatsink", "cantilever_fatigue", "membrane_diffusion", "helmholtz_resonator", "pcb_thermal"]

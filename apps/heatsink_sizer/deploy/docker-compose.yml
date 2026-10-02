@@ -1,0 +1,32 @@
+# HeatSink Sizer behind Caddy (automatic HTTPS via Let's Encrypt).
+#   cp .env.example .env   # set DOMAIN, HSS_USER, HSS_PASSWORD
+#   docker compose up -d --build
+# Needs ports 80/443 open and DOMAIN's DNS A record pointing at this server.
+services:
+  app:
+    build:
+      context: ../../..                       # repository root
+      dockerfile: apps/heatsink_sizer/Dockerfile
+    restart: unless-stopped
+    environment:
+      HSS_USER: ${HSS_USER:-}
+      HSS_PASSWORD: ${HSS_PASSWORD:-}
+      HSS_MAX_SIZING: ${HSS_MAX_SIZING:-2}
+    expose: ["8080"]
+    mem_limit: 2g
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,216 @@
+{
+  "mode": "natural",
+  "error": {
+    "n_test_designs": 750,
+    "measured_on": "held-out designs (never trained on)",
+    "per_output": {
+      "thermal resistance (base to air)": {
+        "mean_abs_pct": 0.7249228358268738,
+        "p95_abs_pct": 2.1089508533477783,
+        "max_abs_pct": 6.5859198570251465,
+        "pct_within_5pct": 99.73333333333333
+      }
+    }
+  },
+  "convergence": {
+    "adam_stage": {
+      "status": "oscillating",
+      "message": "Loss is noisy or rising at the end of training -- lower the learning rate or add a decay schedule.",
+      "epochs": 400,
+      "initial_loss": 0.02773556832271414,
+      "final_loss": 0.00031351192058690894,
+      "reduction_factor": 88.46734845294515,
+      "orders_of_magnitude": 1.9467830107742135,
+      "tail_relative_change_pct": 5.477547018686726
+    },
+    "lbfgs_round_losses": [
+      0.0001256457035196945,
+      0.00012275599874556065,
+      0.00012275599874556065,
+      0.00012275599874556065
+    ],
+    "reduction_factor": 3244.3078422691237,
+    "last_round_improvement_pct": 0.0,
+    "status": "converged",
+    "message": "L-BFGS polish no longer improves the loss (last round 0.00%); total reduction 3244x."
+  },
+  "generalization": {
+    "train_mean_abs_pct": 0.5934255719184875,
+    "test_mean_abs_pct": 0.7249228358268738,
+    "test_over_train": 1.2215901613235474,
+    "status": "good",
+    "valid_design_space": {
+      "base_width_mm": [
+        30.0,
+        200.0
+      ],
+      "base_depth_mm": [
+        30.0,
+        200.0
+      ],
+      "base_thickness_mm": [
+        2.0,
+        15.0
+      ],
+      "fin_thickness_mm": [
+        0.6,
+        4.0
+      ],
+      "fin_height_mm": [
+        8.0,
+        80.0
+      ],
+      "k_w_mk": [
+        150.0,
+        400.0
+      ],
+      "source_frac_w": [
+        0.15,
+        1.0
+      ],
+      "source_frac_d": [
+        0.15,
+        1.0
+      ],
+      "t_ambient_c": [
+        0.0,
+        50.0
+      ],
+      "fin_gap_mm": [
+        2.5,
+        20.0
+      ],
+      "power_w": [
+        1.0,
+        80.0
+      ]
+    },
+    "note": "Outside this design space the surrogate is not used: the sizer only samples inside it, and every proposal is re-verified by the physics engine."
+  },
+  "variables": {
+    "inputs": [
+      "base width",
+      "base depth (flow length)",
+      "base thickness",
+      "fin gap",
+      "fin thickness",
+      "fin height",
+      "fin count",
+      "material conductivity",
+      "source width / base width",
+      "source depth / base depth",
+      "ambient temperature",
+      "power"
+    ],
+    "outputs": [
+      "thermal resistance"
+    ],
+    "elasticity_of_resistance": {
+      "fin height": -0.576409101486206,
+      "fin gap": -0.4230736196041107,
+      "base depth (flow length)": -0.4002065658569336,
+      "fin count": -0.36027610301971436,
+      "base width": -0.3361920118331909,
+      "power": -0.22237235307693481,
+      "fin thickness": 0.03304097428917885,
+      "material conductivity": -0.026332098990678787,
+      "source depth / base depth": -0.012892091646790504,
+      "source width / base width": -0.011810814961791039,
+      "base thickness": -0.011293468996882439,
+      "ambient temperature": 0.002256615087389946
+    },
+    "elasticity_note": "Median % change of the thermal resistance per +1% of each input (per +1 \u00b0C for ambient temperature). Negative = helps cooling."
+  },
+  "weights": {
+    "loss_terms": [
+      {
+        "term": "log_R",
+        "weight": 1.0,
+        "test_mse_standardized": 0.0002112041402142495,
+        "share_pct": 100.0
+      }
+    ],
+    "network": {
+      "architecture": "PINNeAPPle ModelRegistry 'bench_mlp' (4x128, SiLU)",
+      "n_params": 51329,
+      "l2_norm": 16.79458236694336,
+      "max_abs": 1.1223149299621582,
+      "non_finite": 0
+    },
+    "training": {
+      "optimizer": "Adam (PINNeAPPle Trainer, best-val checkpoint) + L-BFGS polish",
+      "n_physics_samples": 5000,
+      "split": {
+        "train": 3250,
+        "val": 500,
+        "cal": 500,
+        "test": 750
+      },
+      "train_seconds": 27.810578107833862
+    }
+  },
+  "uncertainty": {
+    "method": "split conformal on log thermal resistance (calibration split)",
+    "n_calibration": 500,
+    "levels": {
+      "90": {
+        "multiplicative_factor": 1.0166579000343903,
+        "empirical_test_coverage_pct": 89.60000000000001,
+        "reading": "true resistance <= predicted x 1.017 for 90% of designs"
+      },
+      "95": {
+        "multiplicative_factor": 1.020469718126846,
+        "empirical_test_coverage_pct": 94.13333333333334,
+        "reading": "true resistance <= predicted x 1.020 for 95% of designs"
+      }
+    },
+    "use": "The sizer screens with the 95% upper bound, then verifies with physics."
+  },
+  "physics_checks": [
+    {
+      "name": "monotonic:power",
+      "law": "In natural convection more power drives more buoyant flow, so the resistance falls as power rises.",
+      "value": 100.0,
+      "strict_pct": 100.0,
+      "status": "pass",
+      "detail": "100.0% of held-out designs have the physically required sign beyond the model's noise level; 100.0% with no tolerance at all (median effect -0.222)."
+    },
+    {
+      "name": "monotonic:material conductivity",
+      "law": "A more conductive material never raises the thermal resistance.",
+      "value": 98.93333333333332,
+      "strict_pct": 94.93333333333334,
+      "status": "warn",
+      "detail": "98.9% of held-out designs have the physically required sign beyond the model's noise level; 94.9% with no tolerance at all (median effect -0.026)."
+    },
+    {
+      "name": "monotonic:source width / base width",
+      "law": "A wider heat source spreads less (lower resistance).",
+      "value": 99.6,
+      "strict_pct": 94.13333333333334,
+      "status": "pass",
+      "detail": "99.6% of held-out designs have the physically required sign beyond the model's noise level; 94.1% with no tolerance at all (median effect -0.012)."
+    },
+    {
+      "name": "positive_resistance",
+      "status": "pass",
+      "value": null,
+      "law": "R > 0 (2nd law)",
+      "detail": "Guaranteed by construction (log output)."
+    },
+    {
+      "name": "uncertainty_calibrated",
+      "law": "95% interval covers 95% of designs",
+      "value": 94.13333333333334,
+      "status": "pass",
+      "detail": "Empirical coverage of the conformal 95% bound on held-out designs."
+    }
+  ],
+  "verdict": {
+    "status": "use_with_caution",
+    "reasons": [
+      "monotonic:material conductivity: warn"
+    ],
+    "role": "Screening only: recommended designs are always re-verified by the physics engine."
+  }
+}

@@ -1,0 +1,7 @@
+# on top of `pip install .` (PINNeAPPle core: numpy, pandas, xarray)
+fastapi>=0.111
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9   # file uploads
+pyarrow>=14               # Parquet
+h5py>=3.9                 # HDF5
+openpyxl>=3.1             # Excel

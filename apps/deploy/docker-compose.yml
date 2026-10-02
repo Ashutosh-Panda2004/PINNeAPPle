@@ -1,0 +1,99 @@
+# The PINNeAPPle apps (HeatSink Sizer, PCB Hotspot, Data Health, Data Standardizer,
+# Simulation Metadata) on one server, behind one Caddy (automatic HTTPS).
+#
+#   cp .env.example .env      # set the domains, logins and e-mail
+#   docker compose up -d --build
+#
+# Needs ports 80 and 443 open and a DNS A record for each domain pointing at
+# this server. See README.md for the full walkthrough.
+name: pinneapple-apps
+
+services:
+  heatsink:
+    build:
+      context: ../..                          # repository root
+      dockerfile: apps/heatsink_sizer/Dockerfile
+    image: pinneapple/heatsink-sizer:latest
+    restart: unless-stopped
+    environment:
+      HSS_USER: ${HSS_USER:-}
+      HSS_PASSWORD: ${HSS_PASSWORD:-}
+      HSS_MAX_SIZING: ${HSS_MAX_SIZING:-2}
+    expose: ["8080"]
+    mem_limit: ${HSS_MEM_LIMIT:-2g}
+
+  pcb:
+    build:
+      context: ../..
+      dockerfile: apps/pcb_hotspot/Dockerfile
+    image: pinneapple/pcb-hotspot:latest
+    restart: unless-stopped
+    environment:
+      PCB_USER: ${PCB_USER:-}
+      PCB_PASSWORD: ${PCB_PASSWORD:-}
+      PCB_MAX_HEAVY: ${PCB_MAX_HEAVY:-2}
+    expose: ["8081"]
+    mem_limit: ${PCB_MEM_LIMIT:-2g}
+
+  datahealth:
+    build:
+      context: ../..
+      dockerfile: apps/data_health/Dockerfile
+    image: pinneapple/data-health:latest
+    restart: unless-stopped
+    environment:
+      EDH_USER: ${EDH_USER:-}
+      EDH_PASSWORD: ${EDH_PASSWORD:-}
+      EDH_MAX_HEAVY: ${EDH_MAX_HEAVY:-2}
+      EDH_MAX_MB: ${EDH_MAX_MB:-50}
+    expose: ["8082"]
+    mem_limit: ${EDH_MEM_LIMIT:-2g}
+
+  standardizer:
+    build:
+      context: ../..
+      dockerfile: apps/data_standardizer/Dockerfile
+    image: pinneapple/data-standardizer:latest
+    restart: unless-stopped
+    environment:
+      EDS_USER: ${EDS_USER:-}
+      EDS_PASSWORD: ${EDS_PASSWORD:-}
+      EDS_MAX_HEAVY: ${EDS_MAX_HEAVY:-2}
+      EDS_MAX_MB: ${EDS_MAX_MB:-80}
+    expose: ["8083"]
+    mem_limit: ${EDS_MEM_LIMIT:-2g}
+
+  simmeta:
+    build:
+      context: ../..
+      dockerfile: apps/simulation_metadata/Dockerfile
+    image: pinneapple/simulation-metadata:latest
+    restart: unless-stopped
+    environment:
+      SMD_USER: ${SMD_USER:-}
+      SMD_PASSWORD: ${SMD_PASSWORD:-}
+      SMD_MAX_HEAVY: ${SMD_MAX_HEAVY:-2}
+      SMD_MAX_MB: ${SMD_MAX_MB:-100}
+    expose: ["8084"]
+    mem_limit: ${SMD_MEM_LIMIT:-2g}
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      HSS_DOMAIN: ${HSS_DOMAIN:?set HSS_DOMAIN in .env}
+      PCB_DOMAIN: ${PCB_DOMAIN:?set PCB_DOMAIN in .env}
+      EDH_DOMAIN: ${EDH_DOMAIN:-datahealth.localhost}
+      EDS_DOMAIN: ${EDS_DOMAIN:-standardizer.localhost}
+      SMD_DOMAIN: ${SMD_DOMAIN:-simmeta.localhost}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # certificates: keep this volume
+      - caddy_config:/config
+    depends_on: [heatsink, pcb, datahealth, standardizer, simmeta]
+
+volumes:
+  caddy_data:
+  caddy_config:

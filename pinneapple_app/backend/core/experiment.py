@@ -46,6 +46,7 @@ class ModelResult:
     error: Optional[str] = None             # non-None if training failed
     retrain_rounds: int = 0                 # how many advisor-driven retrains occurred
     diagnosis: Optional[Dict[str, Any]] = None  # last DiagnosticReport summary
+    report: Optional[Dict[str, Any]] = None     # surrogate_report.build_report output
 
 
 @dataclass
@@ -56,15 +57,25 @@ class ExperimentResult:
     completed_at: str = ""
 
     def leaderboard(self) -> list:
-        """Return list of dicts sorted by l2_relative (ascending)."""
+        """Rows sorted by held-out l2_relative, then by unseen-point PDE residual."""
         rows = []
         for name, r in self.model_results.items():
             if r.error:
                 continue
             row = {"model": name, **r.metrics, "n_params": r.n_params,
                    "train_time_s": round(r.train_time_s, 2)}
+            if r.report:
+                row["verdict"] = r.report.get("verdict", {}).get("status")
+                row["convergence"] = r.report.get("convergence", {}).get("status")
             rows.append(row)
-        return sorted(rows, key=lambda x: x.get("l2_relative", float("inf")))
+
+        def key(row):
+            l2 = row.get("l2_relative", float("nan"))
+            res = row.get("pde_residual", float("nan"))
+            finite = lambda v: isinstance(v, float) and v == v and v != float("inf")
+            return (0 if finite(l2) else 1, l2 if finite(l2) else 0.0,
+                    res if finite(res) else float("inf"))
+        return sorted(rows, key=key)
 
 
 class ExperimentRunner:
@@ -194,91 +205,102 @@ class ExperimentRunner:
         cfg: ExperimentConfig,
         round_label: int,
     ) -> ModelResult:
-        """Synchronous training of a single model with a given config."""
+        """Synchronous training of a single model with a given config.
+
+        Physics comes from :func:`physics_adapter.build_physics` (the real
+        ``compile_problem`` batch for presets, SymPy-compiled equations for
+        custom problems). Reference data, when present, is split into
+        train / calibration / test: only the train split is fitted, the
+        calibration split feeds conformal UQ and every accuracy number is
+        measured on the test split.
+        """
         import torch
-        from pinneapple_neural.architectures import ModelRegistry
-        from pinneapple_physics.pinn_solver import compile_problem
+        from .physics_adapter import build_physics, sample_interior
+        from .surrogate_report import build_report
 
         name = model_cfg.name
         t0 = time.time()
-
-        # Loss weights (default 1.0 each)
-        w_physics = 1.0
-        w_bc = 1.0
-        if model_cfg.weight_override:
-            w_physics = model_cfg.weight_override.get("physics", 1.0)
-            w_bc = model_cfg.weight_override.get("bc", 1.0)
-
         try:
-            # ── Build model ───────────────────────────────────────────────
-            in_dim = len(self.problem.domain_bounds)
-            if self.problem.is_time_dependent:
-                in_dim += 1
-            out_dim = len(self.problem.field_names)
-
-            model = _build_model(name, in_dim, out_dim, model_cfg.extra_kwargs)
-
-            # ── Compile physics loss ──────────────────────────────────────
-            if self.problem.kind == "preset" and self.problem.spec is not None:
-                physics_fn = compile_problem(self.problem.spec)
-            elif self.problem.kind == "custom" and self.problem.equations:
-                physics_fn = _compile_custom(self.problem)
-            else:
-                physics_fn = None
-
-            # ── Prepare tensors ───────────────────────────────────────────
+            torch.manual_seed(cfg.seed)
+            rng = np.random.default_rng(cfg.seed)
             dev = torch.device(cfg.device)
-            x_col = torch.as_tensor(self.data.x_col, dtype=torch.float32, device=dev)
-            x_bnd = torch.as_tensor(self.data.x_bnd, dtype=torch.float32, device=dev)
-            x_ic  = (torch.as_tensor(self.data.x_ic,  dtype=torch.float32, device=dev)
-                     if self.data.x_ic is not None else None)
-            u_ref = (torch.as_tensor(self.data.u_ref, dtype=torch.float32, device=dev)
-                     if self.data.u_ref is not None else None)
 
-            model = model.to(dev)
+            physics = build_physics(self.problem, weight_override=model_cfg.weight_override)
+            if physics is None:
+                from .physics_adapter import PhysicsAdapter
+                physics = PhysicsAdapter()
+                physics.label, physics.pde_kind = self.problem.name, "none"
+                physics.bounds = {k: tuple(map(float, v)) for k, v in self.problem.domain_bounds.items()}
+                physics.coords = list(physics.bounds)
+                physics.fields = list(self.problem.field_names)
+                physics.field_ranges = {}
+                has_physics = False
+            else:
+                has_physics = True
+            warnings = list(physics.warnings)
+            if not has_physics:
+                warnings.append("Problem has no physics definition: training on reference data only.")
 
-            # ── Training loop ─────────────────────────────────────────────
+            coords, fields = physics.coords, physics.fields
+            x_col = np.asarray(self.data.x_col, dtype=np.float32)
+            if x_col.shape[1] == len(coords) - 1 and coords[-1] == "t":
+                lo, hi = physics.bounds["t"]
+                x_col = np.concatenate([x_col, rng.uniform(lo, hi, (len(x_col), 1)).astype(np.float32)], 1)
+            if x_col.shape[1] != len(coords):
+                raise ValueError(f"Collocation points have {x_col.shape[1]} columns but the problem "
+                                 f"coordinates are {coords}.")
+
+            split, ref_note = _split_reference(x_col, self.data.u_ref, len(fields), rng)
+            if ref_note:
+                warnings.append(ref_note)
+            if not has_physics and "X_train" not in split:
+                raise ValueError("Nothing to train on: the problem has no physics definition "
+                                 "and no usable reference data.")
+
+            model = _build_model(name, len(coords), len(fields), model_cfg.extra_kwargs).to(dev)
+
+            n_bnd = max(64, len(self.data.x_bnd) if self.data.x_bnd is not None else 0)
+            n_ic = max(64, len(self.data.x_ic) if self.data.x_ic is not None else 0)
+            X_eval_np = sample_interior(physics.bounds, coords, min(2048, max(256, len(x_col))),
+                                        np.random.default_rng(cfg.seed + 1))
+            X_eval = torch.as_tensor(X_eval_np, device=dev)
+            if has_physics:
+                train_batch = physics.build_batch(x_col, n_bnd, n_ic, cfg.seed, dev)
+                eval_batch = physics.build_batch(X_eval_np, n_bnd, n_ic, cfg.seed + 1, dev)
+                raw_initial = physics.loss(model, eval_batch)[1]
+            else:
+                raw_initial = None
+
+            to_t = lambda a: None if a is None else torch.as_tensor(a, dtype=torch.float32, device=dev)
+            X_tr, Y_tr = to_t(split.get("X_train")), to_t(split.get("Y_train"))
+            w_data = 1.0
+
             optimizer = torch.optim.Adam(model.parameters(), lr=cfg.lr)
             loss_hist, phys_hist, bc_hist = [], [], []
+            snap_epochs = set(np.linspace(int(0.8 * cfg.epochs), cfg.epochs - 1, 5).astype(int).tolist())
+            snapshots = []
+            data_loss_val = None
 
             for epoch in range(cfg.epochs):
                 optimizer.zero_grad()
-
-                out = model(x_col)
-                pred = out.y if hasattr(out, "y") else out
-
-                # Physics loss
-                phys_loss = torch.tensor(0.0, device=dev)
-                if physics_fn is not None:
-                    try:
-                        loss_dict = physics_fn(model, x_col, {})
-                        phys_loss = sum(loss_dict.values())
-                    except Exception:
-                        pass
-
-                # BC loss
-                bc_loss = torch.tensor(0.0, device=dev)
-                if len(x_bnd) > 0:
-                    out_bnd = model(x_bnd)
-                    pred_bnd = out_bnd.y if hasattr(out_bnd, "y") else out_bnd
-                    bc_loss = (pred_bnd ** 2).mean()
-
-                # Data loss (if reference available)
-                data_loss = torch.tensor(0.0, device=dev)
-                if u_ref is not None and len(u_ref) == len(pred):
-                    data_loss = ((pred - u_ref) ** 2).mean()
-
-                total = w_physics * phys_loss + w_bc * bc_loss + data_loss
+                if has_physics:
+                    total, raw = physics.loss(model, train_batch)
+                else:
+                    total, raw = torch.zeros((), device=dev), {}
+                if X_tr is not None:
+                    data_loss = torch.mean((_unwrap(model(X_tr)) - Y_tr) ** 2)
+                    total = total + w_data * data_loss
+                    data_loss_val = float(data_loss.detach())
                 total.backward()
-
                 if cfg.grad_clip is not None:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
-
                 optimizer.step()
 
                 loss_hist.append(float(total.detach()))
-                phys_hist.append(float(phys_loss.detach() if hasattr(phys_loss, 'detach') else phys_loss))
-                bc_hist.append(float(bc_loss.detach() if hasattr(bc_loss, 'detach') else bc_loss))
+                phys_hist.append(raw.get("pde", 0.0))
+                bc_hist.append(sum(v for k, v in raw.items() if k != "pde"))
+                if epoch in snap_epochs:
+                    snapshots.append({k: v.detach().clone() for k, v in model.state_dict().items()})
 
                 if progress_cb and epoch % max(1, cfg.epochs // 50) == 0:
                     progress_cb({
@@ -286,17 +308,29 @@ class ExperimentRunner:
                         "round": round_label,
                         "epoch": epoch,
                         "total_epochs": cfg.epochs,
-                        "loss": float(total),
-                        "phys_loss": float(phys_loss),
-                        "bc_loss": float(bc_loss),
+                        "loss": loss_hist[-1],
+                        "phys_loss": phys_hist[-1],
+                        "bc_loss": bc_hist[-1],
                     })
 
-            # ── Compute metrics ───────────────────────────────────────────
-            metrics = _compute_metrics(
-                model, x_col, u_ref, phys_hist, bc_hist,
-                self.config.metrics, dev
-            )
+            # ── Evaluation (never on training points) ─────────────────────
+            if has_physics:
+                final_raw_train = physics.loss(model, train_batch)[1]
+                raw_unseen = physics.loss(model, eval_batch)[1]
+            else:
+                final_raw_train, raw_unseen = {}, {}
+            res_train = float(np.sqrt(final_raw_train["pde"])) if "pde" in final_raw_train else None
 
+            report = build_report(
+                model=model, adapter=physics, loss_history=loss_hist,
+                final_raw_train=final_raw_train, raw_initial=raw_initial, raw_unseen=raw_unseen,
+                res_train=res_train, X_eval=X_eval,
+                split={k: (to_t(v) if k.startswith("X") else v) for k, v in split.items()},
+                snapshots=snapshots, reference_source=self.data.meta.get("reference_source")
+                or ("numerical solver" if self.data.solver_outputs else None),
+                w_data=w_data, data_loss=data_loss_val, warnings=warnings,
+            )
+            metrics = _compute_metrics(report, raw_unseen, physics, self.config.metrics)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
             return ModelResult(
@@ -309,6 +343,7 @@ class ExperimentRunner:
                 n_params=n_params,
                 model_state={k: v.cpu().numpy().tolist()
                              for k, v in model.state_dict().items()},
+                report=report,
             )
 
         except Exception as e:
@@ -320,7 +355,7 @@ class ExperimentRunner:
                 bc_loss_history=[],
                 train_time_s=time.time() - t0,
                 n_params=0,
-                error=str(e),
+                error=f"{type(e).__name__}: {e}",
             )
 
 
@@ -337,6 +372,10 @@ def _result_is_better(new: ModelResult, old: ModelResult) -> bool:
     import math
     if math.isfinite(new_l2) and math.isfinite(old_l2):
         return new_l2 < old_l2
+    new_res = new.metrics.get("pde_residual", float("inf"))
+    old_res = old.metrics.get("pde_residual", float("inf"))
+    if math.isfinite(new_res) and math.isfinite(old_res):
+        return new_res < old_res
     # Fallback to final loss
     new_loss = new.loss_history[-1] if new.loss_history else float("inf")
     old_loss = old.loss_history[-1] if old.loss_history else float("inf")
@@ -368,61 +407,68 @@ def _build_model(name: str, in_dim: int, out_dim: int, extra_kwargs: dict):
     return ModelRegistry.build(name, **kwargs)
 
 
-def _compile_custom(problem):
-    """Attempt to compile custom EquationSpec list into a physics_fn."""
-    try:
-        from pinneapple_physics.symbolic_pde import SymbolicPDE, auto_residual
-        import sympy as sp
-        residuals = []
-        for eq in problem.equations:
-            if isinstance(eq.expression, str):
-                expr = sp.sympify(eq.expression)
-            else:
-                expr = eq.expression
-            residuals.append(expr)
-
-        def _physics_fn(model, x, _):
-            import torch
-            out = model(x)
-            pred = out.y if hasattr(out, "y") else out
-            return {"custom_pde": (pred ** 2).mean() * 0.0}  # placeholder
-        return _physics_fn
-    except Exception:
-        return None
+def _unwrap(out):
+    y = out.y if hasattr(out, "y") else out
+    return y[:, None] if y.ndim == 1 else y
 
 
-def _compute_metrics(model, x_col, u_ref, phys_hist, bc_hist, metric_names, dev):
-    import torch
+def _split_reference(x_col: np.ndarray, u_ref, n_fields: int, rng: np.random.Generator,
+                     frac_cal: float = 0.15, frac_test: float = 0.15):
+    """Split reference data into train / calibration / test.
+
+    Returns ``(split, note)``; ``split`` is empty when there is no usable
+    reference (``note`` then says why, unless there simply is none).
+    """
+    if u_ref is None:
+        return {}, None
+    Y = np.asarray(u_ref, dtype=np.float32)
+    if Y.ndim == 1:
+        Y = Y[:, None]
+    if len(Y) != len(x_col):
+        return {}, (f"Reference data ignored: {len(Y)} values for {len(x_col)} points.")
+    if Y.shape[1] != n_fields:
+        return {}, (f"Reference data ignored: it has {Y.shape[1]} column(s) but the model predicts "
+                    f"{n_fields} field(s), so columns cannot be matched to fields.")
+    if len(Y) < 20:
+        return {}, "Reference data ignored: fewer than 20 points, too few to hold out a test set."
+    idx = rng.permutation(len(Y))
+    n_te = max(1, int(round(frac_test * len(Y))))
+    n_cal = max(1, int(round(frac_cal * len(Y))))
+    te, cal, tr = idx[:n_te], idx[n_te:n_te + n_cal], idx[n_te + n_cal:]
+    return {
+        "X_train": x_col[tr], "Y_train": Y[tr],
+        "X_cal": x_col[cal], "Y_cal": Y[cal],
+        "X_test": x_col[te], "Y_test": Y[te],
+    }, None
+
+
+def _compute_metrics(report, raw_unseen, physics, metric_names) -> Dict[str, float]:
+    """Leaderboard numbers, all measured on held-out data / unseen points."""
+    nan = float("nan")
+    err = report.get("error", {})
     metrics: Dict[str, float] = {}
+    rel = err.get("rel_l2_pct") if err.get("available") else None
+    pf = err.get("per_field", {}) if err.get("available") else {}
 
-    with torch.no_grad():
-        out = model(x_col)
-        pred = out.y if hasattr(out, "y") else out
+    def mean_of(key):
+        vals = [v[key] for v in pf.values() if v.get(key) is not None]
+        return float(np.mean(vals)) if vals else nan
 
-    if "pde_residual" in metric_names and phys_hist:
-        metrics["pde_residual"] = float(np.mean(phys_hist[-10:]))
-    if "bc_residual" in metric_names and bc_hist:
-        metrics["bc_residual"] = float(np.mean(bc_hist[-10:]))
-
-    if u_ref is not None:
-        diff = (pred - u_ref).cpu().numpy()
-        ref_np = u_ref.cpu().numpy()
-
-        if "mse" in metric_names:
-            metrics["mse"] = float(np.mean(diff ** 2))
-        if "mae" in metric_names:
-            metrics["mae"] = float(np.mean(np.abs(diff)))
-        if "max_error" in metric_names:
-            metrics["max_error"] = float(np.max(np.abs(diff)))
-        if "l2_relative" in metric_names:
-            norm = np.linalg.norm(ref_np) + 1e-10
-            metrics["l2_relative"] = float(np.linalg.norm(diff) / norm)
-        if "r2" in metric_names:
-            ss_res = np.sum(diff ** 2)
-            ss_tot = np.sum((ref_np - ref_np.mean()) ** 2) + 1e-10
-            metrics["r2"] = float(1.0 - ss_res / ss_tot)
-    else:
-        if "l2_relative" in metric_names:
-            metrics["l2_relative"] = float("nan")
-
+    candidates = {
+        "l2_relative": rel / 100 if rel is not None else nan,
+        "error_pct": rel if rel is not None else nan,
+        "mse": (float(np.mean([v["rmse"] ** 2 for v in pf.values() if v.get("rmse") is not None]))
+                if pf else nan),
+        "mae": mean_of("mae"),
+        "max_error": max((v["max_abs_error"] for v in pf.values()
+                          if v.get("max_abs_error") is not None), default=nan),
+        "r2": err.get("r2") if err.get("r2") is not None else nan,
+        "pde_residual": float(np.sqrt(raw_unseen["pde"])) if "pde" in raw_unseen else nan,
+        "bc_residual": (float(np.mean([np.sqrt(v) for k, v in raw_unseen.items() if k != "pde"]))
+                        if any(k != "pde" for k in raw_unseen) else nan),
+    }
+    wanted = set(metric_names or candidates) | {"l2_relative", "error_pct", "pde_residual"}
+    for k, v in candidates.items():
+        if k in wanted:
+            metrics[k] = float(v) if v is not None else nan
     return metrics

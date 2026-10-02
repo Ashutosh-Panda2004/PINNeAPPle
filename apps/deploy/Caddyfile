@@ -1,0 +1,67 @@
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$HSS_DOMAIN} {
+	import common
+	reverse_proxy heatsink:8080 {
+		transport http {
+			read_timeout 120s
+		}
+	}
+}
+
+{$PCB_DOMAIN} {
+	import common
+	reverse_proxy pcb:8081 {
+		transport http {
+			read_timeout 120s
+		}
+	}
+}
+
+{$EDH_DOMAIN} {
+	import common
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy datahealth:8082 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}
+
+{$EDS_DOMAIN} {
+	import common
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy standardizer:8083 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}
+
+{$SMD_DOMAIN} {
+	import common
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy simmeta:8084 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}
