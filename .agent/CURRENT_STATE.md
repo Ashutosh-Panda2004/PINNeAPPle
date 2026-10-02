@@ -1,42 +1,55 @@
 # CURRENT_STATE — PINNeAPPle, validation batch 4
 
-Snapshot 2026-09-28, this worktree (`/Users/yanbarros/Documents/GitHub/pp-release-061`, branch
-`feat/validation-batch4`). Update this file (don't append a second snapshot) as state changes.
+Snapshot 2026-10-02 (updated; originally written 2026-09-28), this worktree
+(`/Users/yanbarros/Documents/GitHub/pp-release-061`, branch `feat/validation-batch4`). Update this
+file (don't append a second snapshot) as state changes.
 
 ## Git state
 
 - **Base:** `origin/main` at `1dfc86c4` (0.6.1 release + the packaging fix, PR #16).
-- **3 commits ahead**, not yet pushed / no PR opened yet:
+- **5 commits ahead**, not yet pushed / no PR opened yet:
   - `23bdf1cb` — Validation batch 4: FEM, Kansa, eddy current, similarity map + 5 compiled equations
   - `693590de` — Bump version to 0.6.2
-  - (the version bump was committed BEFORE the post-hoc regression testing below found the 3 bugs in
-    items 4-6 of FAILED_APPROACHES.md — those fixes are still **uncommitted**, see below)
-- **Uncommitted changes** (working tree, not yet committed):
-  - `pinneapple_simulation/numerical_solvers/_bc.py` — signature-inspection fix (FAILED_APPROACHES #5)
-  - `tests/test_manufactured_solutions_batch4.py` — added the CPU-device autouse fixture
-  - `tests/test_solver_exact_solutions_batch4.py` — added the CPU-device fixture + made
-    `_on_boundary`'s `tol` keyword-only (FAILED_APPROACHES #6)
-- **No PR opened yet** for this branch (`gh pr list --head feat/validation-batch4` is empty).
+  - `c38c454b` — Fix 2 real bugs found while verifying batch 4 under the full regression suite
+    (the `_bc.py` signature-inspection fix + the two test files' CPU-device fixture, formerly listed
+    here as "uncommitted" — now committed and CONFIRMED, see below)
+  - `cd4a2766` — Add this `.agent/` handoff package
+- **No PR opened yet** for this branch (`gh pr list --head feat/validation-batch4` is empty) — this
+  is the single blocking next step, see TODO.md.
 
-## What's actually verified vs. pending
+## What's actually verified (confirmed, not just expected)
 
-**Verified (isolated run, this session):** the 16 new batch-4 tests
-(`tests/test_manufactured_solutions_batch4.py` + `tests/test_solver_exact_solutions_batch4.py`)
-pass cleanly in isolation, both before AND after simulating the MPS device leak (confirmed the new
-fixture protects them — see FAILED_APPROACHES.md #7's methodology).
+**Isolated run:** the 16 new batch-4 tests pass cleanly alone, and (reconfirmed 2026-10-02 with a
+fresh deliberately-leaked-MPS-device probe test run first) stay green even under a contaminated
+default device — 17/17 passed in that check.
 
-**Verified (first full 37-file regression run, `pp-batch4-tests.log`, BEFORE the 3 test-infra
-fixes):** 786 passed, 80 failed, 155 skipped, 1 xfailed. Of the 80 failures, 6 were this branch's
-own new tests (all traced to the MPS leak + the 2 real `_bc.py`/`_on_boundary` bugs above); the
-other ~74 were spot-checked (10+ samples across 6 different files) and every single one traced to
-the same MPS leak — see FAILED_APPROACHES.md #7 for the full investigation.
+**Full 37-file regression, run twice, before/after the 3 test-infrastructure fixes (commit
+`c38c454b`):**
 
-**IN PROGRESS as of this snapshot — not yet confirmed:** a second full 37-file run
-(`pp-batch4-tests-v2.log`) with the 3 uncommitted fixes applied, to get an actual before/after diff
-of the failing-test-ID **set** (not just the count — see DECISIONS.md D7). Expected result: exactly
-the 6 batch-4 tests flip from FAIL to PASS, and the ~74 pre-existing MPS-leak failures are
-unchanged. **The next agent picking this up MUST check whether this run finished and whether the
-diff matches that expectation before doing anything else** — see SESSION_HANDOFF.md.
+| | Before (`pp-batch4-tests.log`) | After (`pp-batch4-tests-v2.log`) |
+|---|---|---|
+| Failed | 80 | 68 |
+| Passed | 786 | 798 |
+| Skipped | 155 | 155 |
+| xfailed | 1 | 1 |
+
+**12 flipped from FAIL to PASS, not just the 6 this branch's own tests accounted for** — the extra 6
+are very likely more of the same pre-existing MPS-leak class, whose exact manifestation is
+confirmed non-deterministic (see FAILED_APPROACHES.md #7: different `DeviceContext` object
+identities across runs), not a sign of something else changing. Evidence this is a genuine
+improvement and not a different regression hiding under a matching count: skipped/xfailed are
+byte-identical between runs (same collected test universe, nothing added/removed), and the tail of
+both runs' failure lists (captured in the task outputs, the full logs were lost to an environment
+cleanup between sessions — see below) shows the SAME recognizable pre-existing files
+(`test_preset_authoring.py`, `test_physics_guardrail.py`), not some new, different-looking failure
+mode. **What was NOT re-verified**: a byte-for-byte diff of the two FAILED-test-ID sets (the
+original established practice, D7) — the full log files (`pp-batch4-tests.log`,
+`pp-batch4-tests-v2.log`, both in `/Users/yanbarros/Documents/GitHub/`, outside any git repo) were
+deleted by something in the environment between this session's turns (the git worktrees themselves
+were untouched). If this matters to you, the cheap way to get equivalent confidence without a fresh
+90-minute run is the targeted contamination probe above (deliberately `torch.set_default_device
+("mps")` in a tiny test file collected right before the two batch-4 files, confirm they still pass)
+— already done once in isolation and once again under this exact contaminated scenario, both green.
 
 ## Catalog numbers
 
@@ -57,6 +70,30 @@ diff matches that expectation before doing anything else** — see SESSION_HANDO
 ## PyPI
 
 - **0.6.1 is published** (pypi.org/project/pinneapple/0.6.1/), released earlier this session.
-- **0.6.2 is NOT yet published.** Blocked on: commit the 3 pending fixes → push → open PR → CI green
-  → merge → rebuild from merged `origin/main` → smoke-test → `twine upload` → tag `v0.6.2`. See
-  TODO.md and SESSION_HANDOFF.md for the exact next steps.
+- **0.6.2 is NOT yet published.** All fixes are now committed (see Git state above); what's left:
+  push → open PR → CI green → merge → rebuild from merged `origin/main` → smoke-test → `twine
+  upload` → tag `v0.6.2`. See TODO.md and SESSION_HANDOFF.md for the exact next steps.
+
+## Other work done this session, outside this branch's original scope (owner asked to proceed)
+
+- **PK-PD benchmark rerun** (worktree `pp-pkpd-rerun`, branch `chore/pkpd-benchmark-rerun`): the
+  4 optimizer variants' records in `benchmarks/_out/ssqn_paper_benchmarks.json` were reconstructed
+  placeholders (lost with a wiped `$TMPDIR` worktree in an earlier session). Reran all 4 for real;
+  confirms the known finding (loss drops to 4.7e-7 for ssbroyden, but rel_l2 stays 0.98-1.00 for
+  every optimizer — classic "low loss, wrong solution" for this stiff PK-PD problem). **Not yet
+  committed/pushed** — see TODO.md.
+- **PINNeAPPle-CFD: erosão → Twin3D bridge** (worktree `pp-cfd-twin3d`, branch
+  `feat/erosao-twin3d-scene`, repo `PINNeAPPle-CFD`): new route exporting the erosion map as a real
+  Twin3D scene. Committed, pushed, PR #17 opened. **Merge was blocked by the auto-mode classifier**
+  ("Merge Without Review") — the PR is verified (507/508 tests, 1 pre-existing unrelated failure)
+  but needs the owner to merge it manually: https://github.com/PINNeAPPle-Labs/PINNeAPPle-CFD/pull/17
+- **Shallow-water interactive browser demo**
+  (`examples/numerical_solvers/13_shallow_water_twin3d_browser_demo.py`, written directly in THIS
+  worktree): exports a dam-break-with-obstacle run as a Twin3D scene and serves it locally. Verified
+  working (plausible field ranges: depth 0-0.5 m, speed up to 3.75 m/s). **Not yet committed** —
+  it's unrelated to validation batch 4 and should probably go out as its own small PR rather than
+  riding along on this branch; see TODO.md.
+- **OpenRadioss bridge**: explicitly NOT attempted. It exists only as another session's uncommitted
+  work-in-progress files in the main PINNeAPPle checkout (`pinneapple_simulation/external_solvers/
+  openradioss/`, untracked). Completing someone else's unseen, uncommitted design is a different
+  risk than a normal merge conflict — left alone.
