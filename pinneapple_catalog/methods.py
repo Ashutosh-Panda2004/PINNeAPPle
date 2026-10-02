@@ -208,15 +208,19 @@ METHODS: List[Method] = [
     _m("T7", "Adaptive residual-based collocation", [TR + "collocation.py"], ["AdaptiveCollocation", "trainer.collocation"],
        refs_in_code=["Lu et al., DeepXDE, SIAM Rev. 63(1) (2021), arXiv:1907.04502",
                      "Wu et al., non-adaptive and residual-based adaptive sampling for PINNs, CMAME 2023, arXiv:2207.10289"]),
-    _m("T8", "Loss balancing: ReLoBRaLo, SoftAdapt, PCGrad, Augmented Lagrangian, Inverse Dirichlet, AutoBalancer",
+    _m("T8", "Loss balancing: ReLoBRaLo, SoftAdapt, PCGrad, Augmented Lagrangian, Inverse Dirichlet, LR Annealing, "
+             "AutoBalancer",
        [TR + "loss_balancer.py"], ["ReLoBRaLo", "SoftAdapt", "PCGrad", "AugmentedLagrangian", "InverseDirichlet",
-                                   "AutoBalancer", "loss_balancer"],
+                                   "LRAnnealing", "AutoBalancer", "loss_balancer"],
        refs_in_code=["Bischof & Kraus, Multi-objective loss balancing for PINNs, arXiv:2110.09813",
                      "Heydari et al., SoftAdapt, arXiv:1912.12355",
                      "van der Meer, Oosterlee & Borovykh, Optimally weighted loss functions for PDEs, 2022"],
        refs_added=["Yu et al., Gradient Surgery for Multi-Task Learning (PCGrad), NeurIPS 2020, arXiv:2001.06782",
                    "Lu et al., PINNs with hard constraints for inverse design (augmented Lagrangian), arXiv:2102.04626",
-                   "Maddu et al., Inverse-Dirichlet weighting, arXiv:2107.00940"]),
+                   "Maddu et al., Inverse-Dirichlet weighting, arXiv:2107.00940",
+                   "Wang, Teng & Perdikaris, Understanding and mitigating gradient flow pathologies in "
+                   "physics-informed neural networks, SIAM J. Sci. Comput. 43(5):A3055 (2021), "
+                   "doi:10.1137/20M1318043 (LR annealing, Algorithm 1)"]),
     _m("T9", "Weight schedulers: SA-PINN, GradNorm, LossRatio, NTK", [TR + "weight_scheduler.py"],
        ["SelfAdaptiveWeights", "GradNormBalancer", "LossRatioBalancer", "NTKWeightBalancer", "weight_scheduler"],
        refs_in_code=["McClenny & Braga-Neto, Self-Adaptive PINNs, arXiv:2009.04544",

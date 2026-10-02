@@ -22,6 +22,11 @@ InverseDirichlet — Sets weights proportional to the inverse of per-layer
              gradient statistics, balancing training "stiffness" across terms.
              (Van der Meer et al., 2022). Very cheap, one backward pass.
 
+LRAnnealing — Rescales each term's weight so the reference term's max
+             gradient matches the term's mean gradient, over the *full*
+             network (not a single layer). (Wang, Teng & Perdikaris, 2021,
+             Algorithm 1). Very cheap, one backward pass per term.
+
 AutoBalancer — Meta-scheduler: monitors training health, automatically switches
                between methods and adjusts hyper-parameters when progress stalls.
 
@@ -475,6 +480,125 @@ class InverseDirichlet:
                         new_w = self.alpha * self._weights.get(name, new_w) + (1.0 - self.alpha) * new_w
                     self._weights[name] = float(new_w)
                     self._history[name].append(self._weights[name])
+
+        self._step += 1
+        total = None
+        for name, w in self._weights.items():
+            if name not in losses:
+                continue
+            term = w * losses[name]
+            total = term if total is None else total + term
+        if total is None:
+            ref = next(iter(losses.values()))
+            total = ref.new_zeros(())
+        return total
+
+    @property
+    def current_weights(self) -> Dict[str, float]:
+        return dict(self._weights)
+
+    def history(self) -> Dict[str, List[float]]:
+        return dict(self._history)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LR Annealing (Wang, Teng & Perdikaris, 2021)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LRAnnealing:
+    """
+    Learning-rate annealing for PINN loss weights (Algorithm 1 of Wang, Teng &
+    Perdikaris, 2021 — "Understanding and mitigating gradient flow pathologies
+    in physics-informed neural networks", SIAM J. Sci. Comput. 43(5):A3055–
+    A3081, doi:10.1137/20M1318043). Not the NTK paper cited for
+    ``NTKWeightBalancer`` above (Wang et al., 2022) — same lead author,
+    different method and different paper.
+
+    One term is the *reference* (held at weight 1, typically the PDE
+    residual). For every other term L_i, the weight is rescaled so that the
+    reference's largest gradient magnitude matches L_i's mean gradient
+    magnitude, both measured against the **full set of trainable
+    parameters** θ (unlike ``InverseDirichlet``/``GradNormBalancer`` above,
+    which use only a shared layer — this follows Algorithm 1 literally):
+
+        λ̂_i = max_θ |∇_θ L_ref| / mean_θ |∇_θ L_i|
+        λ_i ← (1 − α) · λ_i + α · λ̂_i              (α = 0.1 in the paper)
+
+    Very cheap: one extra backward pass per non-reference term, every
+    ``update_every`` steps (100 in the paper).
+
+    Parameters
+    ----------
+    model         : nn.Module (the PINN)
+    loss_names    : list of loss term identifiers
+    reference     : name of the reference term, held at weight 1; must be
+                    in loss_names (default "pde")
+    update_every  : recompute weights every N steps (100 in the paper)
+    alpha         : EMA weight given to the new estimate λ̂_i (0.1 in the paper)
+    clip_min/max  : hard clamps on λ̂_i before the EMA update (the paper does
+                    not clamp; this guards against division by ~0 when a
+                    term's gradient has gone flat)
+    params        : optional explicit list of trainable parameters to use
+                    instead of ``model.parameters()`` (e.g. to exclude a
+                    frozen embedding)
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        loss_names: List[str],
+        *,
+        reference: str = "pde",
+        update_every: int = 100,
+        alpha: float = 0.1,
+        clip_min: float = 1e-3,
+        clip_max: float = 1e4,
+        initial_weights: Optional[Dict[str, float]] = None,
+        params: Optional[List[nn.Parameter]] = None,
+    ) -> None:
+        self.model = model
+        self.loss_names = list(loss_names)
+        if reference not in self.loss_names:
+            raise ValueError(f"reference loss {reference!r} not in loss_names={self.loss_names}")
+        self.reference = reference
+        self.update_every = int(update_every)
+        self.alpha = float(alpha)
+        self.clip_min = float(clip_min)
+        self.clip_max = float(clip_max)
+
+        init = initial_weights or {}
+        self._weights: Dict[str, float] = {n: float(init.get(n, 1.0)) for n in self.loss_names}
+        self._weights[reference] = 1.0
+        self._params = list(params) if params is not None else [
+            p for p in model.parameters() if p.requires_grad
+        ]
+        self._history: Dict[str, List[float]] = defaultdict(list)
+        self._step = 0
+
+    def _grad_abs(self, loss: torch.Tensor) -> torch.Tensor:
+        if not self._params:
+            return torch.zeros(1)
+        grads = torch.autograd.grad(
+            loss, self._params, retain_graph=True, create_graph=False, allow_unused=True
+        )
+        parts = [g.reshape(-1) for g in grads if g is not None]
+        return torch.cat(parts).abs() if parts else torch.zeros(1)
+
+    def step(self, losses: Dict[str, torch.Tensor]) -> torch.Tensor:
+        if self._step % self.update_every == 0 and self.reference in losses:
+            g_ref = self._grad_abs(losses[self.reference])
+            gmax = float(g_ref.max().item()) if g_ref.numel() else 0.0
+            if gmax > 0:
+                for name in self.loss_names:
+                    if name == self.reference or name not in losses:
+                        continue
+                    gmean = float(self._grad_abs(losses[name]).mean().item())
+                    if gmean > 0:
+                        target = max(self.clip_min, min(self.clip_max, gmax / gmean))
+                        w = self._weights.get(name, 1.0)
+                        self._weights[name] = float((1.0 - self.alpha) * w + self.alpha * target)
+            for name in self.loss_names:
+                self._history[name].append(self._weights[name])
 
         self._step += 1
         total = None

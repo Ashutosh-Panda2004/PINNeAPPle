@@ -74,7 +74,9 @@ class WeightSchedulerConfig:
     Attributes
     ----------
     method : str
-        One of "self_adaptive", "gradnorm", "loss_ratio", "ntk", "fixed".
+        One of "self_adaptive", "gradnorm", "loss_ratio", "ntk", "fixed",
+        "relobralo", "softadapt", "augmented_lagrangian", "inverse_dirichlet",
+        "lr_annealing", "pcgrad", "joint_adaptive", "auto".
     initial_weights : dict
         Starting weight for each loss term.  Keys must match loss_names.
         Defaults: pde=1, bc=10, ic=10, data=1.
@@ -612,6 +614,17 @@ class WeightScheduler:
                 clip_max=cfg.clip_max,
                 initial_weights=cfg.initial_weights,
             )
+        elif method == "lr_annealing":
+            from .loss_balancer import LRAnnealing
+            self._impl = LRAnnealing(
+                model, loss_names,
+                reference=getattr(cfg, "reference", "pde"),
+                update_every=cfg.update_every,
+                alpha=getattr(cfg, "annealing_alpha", 0.1),
+                clip_min=cfg.clip_min,
+                clip_max=cfg.clip_max,
+                initial_weights=cfg.initial_weights,
+            )
         elif method == "pcgrad":
             from .loss_balancer import PCGrad
             self._impl = PCGrad(
@@ -641,7 +654,7 @@ class WeightScheduler:
                 f"Unknown weight scheduling method: '{method}'. "
                 "Choose from: self_adaptive, gradnorm, loss_ratio, ntk, fixed, "
                 "relobralo, softadapt, augmented_lagrangian, inverse_dirichlet, "
-                "pcgrad, joint_adaptive, auto."
+                "lr_annealing, pcgrad, joint_adaptive, auto."
             )
 
         # Fixed weights dict for "fixed" method
@@ -694,7 +707,7 @@ class WeightScheduler:
         # New-style balancers: all expose .step(losses[, optimizer])
         if self._method in {
             "relobralo", "softadapt", "augmented_lagrangian",
-            "inverse_dirichlet", "joint_adaptive", "auto",
+            "inverse_dirichlet", "lr_annealing", "joint_adaptive", "auto",
         }:
             return self._impl.step(losses)  # type: ignore[union-attr]
 
