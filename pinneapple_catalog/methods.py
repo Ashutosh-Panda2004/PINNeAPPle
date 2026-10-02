@@ -202,7 +202,7 @@ METHODS: List[Method] = [
     _m("T4", "Time marching", [TR + "time_marching.py"], ["TimeMarchingTrainer", "time_marching"],
        refs_in_code=["Wight & Zhao, Solving Allen-Cahn and Cahn-Hilliard equations using adaptive PINNs, arXiv:2007.04542"]),
     _m("T5", "Two phases Adam -> L-BFGS + L-BFGS finetune", [TR + "two_phase.py", TR + "lbfgs_finetune.py"],
-       ["TwoPhaseTrainer", "lbfgs_finetune", "two_phase"],
+       ["TwoPhaseTrainer", "lbfgs_finetune", "trainer.two_phase"],
        refs_added=[RAISSI, "Liu & Nocedal, On the limited memory BFGS method, Math. Program. 45 (1989) 503-528"]),
     _m("T6", "Multi-restart", [TR + "multistart.py"], ["MultiRestartTrainer", "multistart"]),
     _m("T7", "Adaptive residual-based collocation", [TR + "collocation.py"], ["AdaptiveCollocation", "trainer.collocation"],

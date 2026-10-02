@@ -67,6 +67,12 @@ def _own_body(block: str) -> str:
 OVERRIDES = {
     "S21": ("tested", "the only 'reference' hit is an OPC-UA live-stream test; no state-estimation "
                       "result is compared with an independent reference"),
+    # 2026-09-27: presets whose probe is their PDE kind get credit from the equation's exact-solution
+    # test; that validates the governing equation (E24 / E32), not the preset's geometry and BCs.
+    "P2.8": ("tested", "only the thermoelasticity_2d residual is validated (E24, free thermal expansion); "
+                       "the preset's own geometry/BCs are not compared with a reference"),
+    "P6.6": ("tested", "only the heston_pde_2d residual is validated (E32, exact claim prices); the preset's "
+                       "own domain/terminal/boundary conditions are not compared with a reference"),
 }
 
 

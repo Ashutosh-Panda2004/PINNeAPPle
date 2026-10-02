@@ -161,11 +161,12 @@ def eddy_current_density(A: np.ndarray, omega: float, sigma: np.ndarray) -> np.n
 
 
 def axial_flux_density(A: np.ndarray, r: np.ndarray, z: np.ndarray) -> np.ndarray:
-    """B_z(r,z) = (1/r) d(r*A)/dr, computed via central differences (the
-    axisymmetric curl relating A_theta to the axial field component)."""
+    """B_z(r,z) = (1/r) d(r*A)/dr = A/r + dA/dr, computed via central differences (the
+    axisymmetric curl relating A_theta to the axial field component). Complex A gives the
+    complex phasor B_z (in-phase and quadrature parts); A = B0 r / 2 gives B_z = B0."""
     RR = r[:, None] * np.ones((1, len(z)))
-    dAdr = np.gradient(A.real, r, axis=0)
-    return -(A.real / (RR + 1e-30) + dAdr)
+    dAdr = np.gradient(A, r, axis=0, edge_order=2)
+    return A / (RR + 1e-30) + dAdr
 
 
 @SolverRegistry.register(

@@ -52,6 +52,15 @@ classes:
   the geometry bounding box -- the generic setup for external/aerodynamic
   flow around an arbitrary immersed body.
 
+KNOWN LIMITATION (measured 2026-09-27, validation batch 4): ``solve_ibm_internal_flow`` in
+"channel" mode does not conserve mass. Pipe R=0.5, L=3, Re=10, 60x22x22 grid, 1500 steps: the
+flow rate falls to 0.71, 0.45 and 0.34 of the inlet value at x = 0.5, 1.5, 2.5 (divergence_rms
+0.86), because the divergence-penalty relaxation does not project onto a divergence-free field.
+The ~1.5-cell wall band also shrinks the effective radius (profile vanishes near r = 0.45, not 0.5).
+The radial profile shape is parabolic-like (centre / mean ~2.1-2.2 vs Poiseuille 2), but flow rates
+and pressure drops from this mode are not quantitative. Use a pressure-Poisson projection (as in
+``solve_ibm_external_flow``) or a body-fitted solver when those numbers matter.
+
 Both functions take only plain arrays / scalars (wall point cloud, bbox,
 Reynolds number, inlet velocity, density, grid resolution, iteration count)
 -- no coupling to any particular problem-instance data format.

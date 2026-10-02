@@ -1,5 +1,5 @@
 {
- "generated_on": "2026-09-26",
+ "generated_on": "2026-09-27",
  "methods": {
   "E1": {
    "other_tests": [
@@ -22,7 +22,8 @@
     "PINNeAPPle/tests/test_gradient_backend_consistency.py::test_gradient_backends_agree_laplace_2d",
     "PINNeAPPle/tests/test_manufactured_solutions.py::test_audit_physics_laplace_2d_exact_solution_gives_zero_residual",
     "PINNeAPPle/tests/test_physics_guardrail.py::test_end_to_end_laplace_2d_exact_solution_is_trustworthy",
-    "PINNeAPPle/tests/test_physics_guardrail.py::test_load_reference_from_upd_zarr_shapes_and_values_match_manual_extraction"
+    "PINNeAPPle/tests/test_physics_guardrail.py::test_load_reference_from_upd_zarr_shapes_and_values_match_manual_extraction",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_q1_reproduces_quadratic_and_converges_second_order_on_harmonic"
    ],
    "status": "validated"
   },
@@ -82,8 +83,10 @@
   },
   "E15": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_buckley_leverett_layered_reservoir"
+   ],
+   "status": "validated"
   },
   "E16": {
    "other_tests": [
@@ -138,11 +141,14 @@
     "PINNeAPPle/tests/test_codegen.py::test_fenics_diffusion_script_is_valid_and_has_expected_api",
     "PINNeAPPle/tests/test_deepxde_bridge.py::test_solve_with_deepxde_poisson_2d_trains_for_real",
     "PINNeAPPle/tests/test_deepxde_bridge.py::test_unsupported_condition_tag_raises_clear_not_implemented_error",
-    "PINNeAPPle/tests/test_deepxde_bridge.py::test_unsupported_pde_kind_raises_clear_not_implemented_error"
+    "PINNeAPPle/tests/test_deepxde_bridge.py::test_unsupported_pde_kind_raises_clear_not_implemented_error",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_accepts_builder_style_conditions_and_edge_tags"
    ],
    "reference_tests": [
     "PINNeAPPle/tests/pinneapple_solvers/test_fdm_robin.py::test_robin_poisson_matches_analytical_linear_profile",
-    "PINNeAPPle/tests/test_codegen.py::test_fdm_poisson_2d_matches_manufactured_solution"
+    "PINNeAPPle/tests/test_codegen.py::test_fdm_poisson_2d_matches_manufactured_solution",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_q1_reproduces_quadratic_and_converges_second_order_on_harmonic",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_kansa_converges_to_exact_solution"
    ],
    "status": "validated"
   },
@@ -160,8 +166,10 @@
   },
   "E21": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_neo_hookean_total_lagrangian_manufactured_body_force"
+   ],
+   "status": "validated"
   },
   "E22": {
    "other_tests": [
@@ -199,8 +207,10 @@
   },
   "E24": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_thermoelasticity_free_thermal_expansion"
+   ],
+   "status": "validated"
   },
   "E25": {
    "other_tests": [],
@@ -209,8 +219,10 @@
   },
   "E26": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_biot_terzaghi_consolidation_mode"
+   ],
+   "status": "validated"
   },
   "E27": {
    "other_tests": [],
@@ -270,8 +282,11 @@
   },
   "E32": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_S_times_v",
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_v_squared"
+   ],
+   "status": "validated"
   },
   "E33": {
    "other_tests": [],
@@ -681,8 +696,11 @@
   },
   "E62": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_required_speed_matches_closed_form",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_similarity_map_affinity_laws_are_exact_below_reference_mach"
+   ],
+   "status": "validated"
   },
   "E63": {
    "other_tests": [
@@ -963,8 +981,11 @@
   },
   "P2.8": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "override": "only the thermoelasticity_2d residual is validated (E24, free thermal expansion); the preset's own geometry/BCs are not compared with a reference",
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_thermoelasticity_free_thermal_expansion"
+   ],
+   "status": "tested"
   },
   "P2.9": {
    "other_tests": [
@@ -1135,8 +1156,12 @@
   },
   "P6.6": {
    "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "override": "only the heston_pde_2d residual is validated (E32, exact claim prices); the preset's own domain/terminal/boundary conditions are not compared with a reference",
+   "reference_tests": [
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_S_times_v",
+    "PINNeAPPle/tests/test_manufactured_solutions_batch4.py::test_heston_claim_paying_v_squared"
+   ],
+   "status": "tested"
   },
   "P6.7": {
    "other_tests": [],
@@ -1327,8 +1352,10 @@
     "PINNeAPPle/tests/test_inspection.py::test_eddy_current_synthetic_matches_solver_convention",
     "PINNeAPPle/tests/test_inspection.py::test_train_eddy_current_smoke"
    ],
-   "reference_tests": [],
-   "status": "tested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_eddy_current_manufactured_solution_second_order"
+   ],
+   "status": "validated"
   },
   "S15": {
    "other_tests": [
@@ -1381,10 +1408,13 @@
   },
   "S2": {
    "other_tests": [
-    "PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_unknown_solver_family_raises"
+    "PINNeAPPle/tests/pinneapple_physics/test_turbulence_selector.py::test_unknown_solver_family_raises",
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_accepts_builder_style_conditions_and_edge_tags"
    ],
-   "reference_tests": [],
-   "status": "tested"
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_fem_q1_reproduces_quadratic_and_converges_second_order_on_harmonic"
+   ],
+   "status": "validated"
   },
   "S20": {
    "other_tests": [
@@ -1616,9 +1646,13 @@
    "status": "untested"
   },
   "S7": {
-   "other_tests": [],
-   "reference_tests": [],
-   "status": "untested"
+   "other_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_multiquadric_laplacian_matches_autograd"
+   ],
+   "reference_tests": [
+    "PINNeAPPle/tests/test_solver_exact_solutions_batch4.py::test_kansa_converges_to_exact_solution"
+   ],
+   "status": "validated"
   },
   "S8": {
    "other_tests": [
@@ -1825,6 +1859,6 @@
   }
  },
  "rule": "validated = a test exercising the item compares against an independent reference (closed form, manufactured solution, published/tabulated value)",
- "test_files_scanned": 168,
- "test_functions_scanned": 1672
+ "test_files_scanned": 171,
+ "test_functions_scanned": 1687
 }

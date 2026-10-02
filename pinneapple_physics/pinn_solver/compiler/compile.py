@@ -786,8 +786,14 @@ def compile_problem(
             # volumetric/bulk penalty (standard practice for near-
             # incompressible Neo-Hookean, decoupled from the linear-elastic
             # lambda). Energy: W = (mu/2)(I1-2-2lnJ) + (K/2)(lnJ)^2, giving
-            # the standard result P = mu(F-F^-T) + K*ln(J)*F^-T, then
-            # sigma = (1/J) P F^T.
+            # the standard result P = mu(F-F^-T) + K*ln(J)*F^-T.
+            # Collocation points are REFERENCE coordinates X, so equilibrium is
+            # the total-Lagrangian form Div_X P + b0 = 0 (b0 = body force per
+            # reference volume). Differentiating the Cauchy stress
+            # sigma = (1/J) P F^T with respect to X is not equivalent (Piola
+            # identity: Div_X P = J div_x sigma, with x the CURRENT coordinates);
+            # an earlier version did that and was off by a few percent for
+            # non-homogeneous finite strain (tests/test_manufactured_solutions_batch4.py).
             if spatial_dim != 2:
                 raise ValueError("hyperelasticity_neo_hookean (this branch) expects 2D spatial dims.")
             for n in ("u", "v"):
@@ -823,15 +829,6 @@ def compile_problem(
             P10 = mu * (F10 - invT10) + K_bulk * lnJ * invT10
             P11 = mu * (F11 - invT11) + K_bulk * lnJ * invT11
 
-            s00 = (P00 * F00 + P01 * F01) / detF_safe
-            s01 = (P00 * F10 + P01 * F11) / detF_safe
-            s10 = (P10 * F00 + P11 * F01) / detF_safe
-            s11 = (P10 * F10 + P11 * F11) / detF_safe
-
-            sigma_xx = s00.unsqueeze(1)
-            sigma_xy = (0.5 * (s01 + s10)).unsqueeze(1)  # enforce symmetry numerically
-            sigma_yy = s11.unsqueeze(1)
-
             b_fn = ctx.get("body_force_fn")
             fx = torch.zeros((xcol.shape[0], 1), device=device, dtype=xcol.dtype)
             fy = torch.zeros((xcol.shape[0], 1), device=device, dtype=xcol.dtype)
@@ -842,13 +839,13 @@ def compile_problem(
                     b_t = b_t[:, None].repeat(1, 2)
                 fx, fy = b_t[:, 0:1], b_t[:, 1:2]
 
-            dsxx_dx = grad(sigma_xx, xcol)[:, x_idx:x_idx + 1]
-            dsxy_dy = grad(sigma_xy, xcol)[:, y_idx:y_idx + 1]
-            dsxy_dx = grad(sigma_xy, xcol)[:, x_idx:x_idx + 1]
-            dsyy_dy = grad(sigma_yy, xcol)[:, y_idx:y_idx + 1]
+            dP00_dX = grad(P00.unsqueeze(1), xcol)[:, x_idx:x_idx + 1]
+            dP01_dY = grad(P01.unsqueeze(1), xcol)[:, y_idx:y_idx + 1]
+            dP10_dX = grad(P10.unsqueeze(1), xcol)[:, x_idx:x_idx + 1]
+            dP11_dY = grad(P11.unsqueeze(1), xcol)[:, y_idx:y_idx + 1]
 
-            res_list.append(dsxx_dx + dsxy_dy + fx)
-            res_list.append(dsxy_dx + dsyy_dy + fy)
+            res_list.append(dP00_dX + dP01_dY + fx)
+            res_list.append(dP10_dX + dP11_dY + fy)
 
         elif pde_kind == "buckley_leverett_two_phase":
             # Immiscible two-phase (water-oil) Darcy flow: water-saturation
