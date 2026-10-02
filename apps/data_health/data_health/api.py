@@ -20,6 +20,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from pinneapple_data.data_health import analyze, example_chiller_plant, load_table
+from pinneapple_data import process_optimizer as po
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "_shared"))
 from appkit import BusyLimiter, install  # noqa: E402
@@ -97,6 +98,7 @@ def _run(data: bytes, filename: str, sheet: Optional[str], time_column: Optional
     except Exception as e:  # pandas / pyarrow / h5py parser errors
         raise HTTPException(422, f"Could not read '{filename}': {type(e).__name__}: {e}") from e
     report["file"] = {"name": filename, "bytes": len(data), **info.__dict__}
+    report["roles"] = po.suggest_roles(report["columns"])
     report["scope"] = scope()
     report["columns_all"] = list(df.columns)
     return report
@@ -138,6 +140,113 @@ def api_example():
 def api_example_csv():
     return Response(_example_csv(), media_type="text/csv",
                     headers={"Content-Disposition": 'attachment; filename="chiller_plant_week.csv"'})
+
+
+# ── optimization ────────────────────────────────────────────────────────────
+OPT_VALIDATION = [
+    "Simulated chilled-water plant with known physics (60 days, 15-min, operators' manual setpoint habits): the "
+    "model predicts plant power within 4.3 kW MAE (R² 0.99) on the last 15 days it never saw",
+    "Predicted saving 8.3 % (bootstrap range 6.9–8.3 %) against a true saving of 9.0 % when the recommended "
+    "setpoints are run through the plant's real physics: the estimate errs on the conservative side",
+    "The CHW return-temperature limit, violated 4.0 % of the time by the operators, is violated 0.2 % of the "
+    "time with the recommendations",
+]
+
+
+def opt_scope() -> dict:
+    return {"validated": OPT_VALIDATION, "title": "Optimization scope & validation", "noun": "limitation",
+            "items_title": "What the optimization assumes",
+            "band": "Savings are model estimates from historical correlations; confirm with a supervised trial.",
+            "tags": {"conservative": "Errs on the safe side", "optimistic": "Can overstate", "check": "Assumption to confirm"},
+            "items": [
+                {"topic": "Correlation, not causation", "effect": "optimistic",
+                 "detail": "The model learns how the KPI moved with the levers in the past. If operators always changed "
+                           "a setpoint together with something unrecorded, part of that effect is attributed to the lever.",
+                 "today": "Run the recommended schedule on alternate days (A/B) for 2-4 weeks and compare measured "
+                          "consumption at equal weather and load.",
+                 "planned": "Built-in trial planner and measurement & verification (IPMVP option B) report."},
+                {"topic": "Only inside past operation", "effect": "conservative",
+                 "detail": "Recommendations are restricted to lever + context combinations similar to recorded ones, and "
+                           "each move is limited. Larger savings outside that envelope are not explored.",
+                 "today": "Widen the range gradually: test new setpoints deliberately so the next model can learn them.",
+                 "planned": "Active learning: propose the most informative next tests."},
+                {"topic": "Steady hourly decisions", "effect": "check",
+                 "detail": "Each sample is optimized on its own; dynamics (thermal storage, ramp limits, equipment "
+                           "starts) are not modelled.",
+                 "today": "Apply the schedule as a setpoint reset table, not as minute-by-minute control.",
+                 "planned": "Sequence-aware models and staging decisions."},
+                {"topic": "Constraints you declare", "effect": "check",
+                 "detail": "Only the constraints listed are enforced (each with its own model and a one-error margin). "
+                           "Comfort, humidity or product-quality limits that are not in the data cannot be checked.",
+                 "today": "Add every limit that matters as a constraint column, or narrow the lever bounds.",
+                 "planned": "Constraint templates per plant type."},
+            ]}
+
+
+def _opt_run(df, report, cfg: dict, extra=None) -> dict:
+    clean, log = po.clean_for_modeling(df, report)
+    bounds = {k: tuple(v) for k, v in (cfg.get("bounds") or {}).items() if isinstance(v, (list, tuple)) and len(v) == 2}
+    try:
+        with _HEAVY:
+            res = po.fit_and_optimize(clean, cfg.get("target"), cfg.get("levers") or [], cfg.get("context") or [],
+                                      goal=cfg.get("goal", "minimize"), constraints=[dict(c) for c in cfg.get("constraints") or []],
+                                      bounds=bounds, max_move=float(cfg.get("max_move", 0.5)))
+    except ImportError as e:
+        raise HTTPException(500, "scikit-learn is not installed on the server.") from e
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    out = po._clean_json({k: v for k, v in res.items() if not k.startswith("_")})
+    if extra:
+        out.update(extra(res))
+    out["cleaning"] = log
+    out["scope"] = opt_scope()
+    return out
+
+
+@app.post("/api/optimize")
+async def api_optimize(file: UploadFile = File(...), config: str = Form(...), sheet: Optional[str] = Form(None),
+                       time_column: Optional[str] = Form(None), units: Optional[str] = Form(None)):
+    """Train a model of the KPI from levers + context and recommend lever settings. `config` (JSON):
+    {target, goal: minimize|maximize, levers: [...], context: [...], constraints: [{column, op: "<="|">=", value}],
+    bounds: {lever: [lo, hi]}, max_move: 0-1}."""
+    data = await file.read()
+    try:
+        cfg = json.loads(config)
+    except ValueError as e:
+        raise HTTPException(422, f"config is not valid JSON: {e}") from e
+    rep = _run(data, file.filename or "upload.csv", sheet, time_column, units)
+    df, info = load_table(data, file.filename or "upload.csv", sheet=sheet or None, max_rows=MAX_ROWS)
+    return _opt_run(df, rep, cfg)
+
+
+def _opt_example_frame():
+    df, info = po.example_plant_operations()
+    return df, info
+
+
+@app.get("/api/optimize/example")
+def api_optimize_example():
+    """Columns, suggested roles and health report of the optimization example (a simulated plant)."""
+    df, info = _opt_example_frame()
+    rep = _run(df.to_csv(index=False).encode(), "plant_operations_60d.csv", None, None, None)
+    rep["roles"] = {"target": info["target"], "goal": "minimize", "levers": info["levers"], "context": info["context"],
+                    "constraints": info["constraints"]}
+    rep["example_info"] = info["description"]
+    return rep
+
+
+@app.post("/api/optimize/example")
+def api_optimize_example_run(config: str = Form(...)):
+    df, info = _opt_example_frame()
+    rep = analyze(df)
+    return _opt_run(df, rep, json.loads(config), extra=lambda res: {"answer_key": po.true_saving(res)})
+
+
+@app.get("/api/optimize/example.csv")
+def api_optimize_example_csv():
+    df, _ = _opt_example_frame()
+    return Response(df.to_csv(index=False).encode(), media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="plant_operations_60d.csv"'})
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

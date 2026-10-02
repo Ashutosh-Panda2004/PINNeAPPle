@@ -5,3 +5,4 @@ python-multipart>=0.0.9   # file uploads
 pyarrow>=14               # Parquet
 h5py>=3.9                 # HDF5
 openpyxl>=3.1             # Excel
+scikit-learn>=1.4        # process optimization (gradient boosting)

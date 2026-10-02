@@ -241,3 +241,23 @@ def test_apis(clients):
         files = [("files", (n.split("/")[-1], z.read(n))) for n in z.namelist()]
     assert m.post("/api/extract", files=files).json()["solver"]["name"] == "CalculiX"
     assert m.post("/api/extract", files=[("files", ("notes.txt", b"hello"))]).status_code == 422
+
+
+# ── process optimization (plain ML) ─────────────────────────────────────────
+
+def test_process_optimizer_saving_matches_true_physics():
+    pytest.importorskip("sklearn")
+    from pinneapple_data import process_optimizer as po
+    df, info = po.example_plant_operations()
+    rep = analyze(df)
+    roles = po.suggest_roles(rep["columns"])
+    assert roles["target"] == "Plant_power [kW]" and set(roles["levers"]) == set(info["levers"])
+    assert "CHW_return_temp [°C]" not in roles["context"]            # an outcome, not context
+    clean, log = po.clean_for_modeling(df, rep)
+    assert any("error-code" in x for x in log)
+    r = po.fit_and_optimize(clean, info["target"], info["levers"], info["context"], constraints=info["constraints"])
+    assert r["model"]["r2"] > 0.95 and r["model"]["mae"] < 0.15 * r["model"]["baseline_mae"]
+    truth = po.true_saving(r)
+    assert 4 < r["saving"]["pct"] < 15 and abs(r["saving"]["pct"] - truth["true_saving_pct"]) < 2.5
+    assert truth["true_constraint_violations_pct"] < truth["true_constraint_violations_before_pct"]
+    assert r["saving"]["range_pct"][0] <= r["saving"]["pct"] <= r["saving"]["range_pct"][1]

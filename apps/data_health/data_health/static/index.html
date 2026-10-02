@@ -23,6 +23,7 @@
     <button data-tab="upload" class="active">Dataset</button>
     <button data-tab="report">Health report</button>
     <button data-tab="columns">Columns</button>
+    <button data-tab="optimize">Optimize</button>
     <button data-tab="api">API</button>
   </nav>
 </header>
@@ -86,6 +87,40 @@
     <div class="panel" id="columns"><div class="empty"><h3>No dataset yet</h3><p>Analyse a dataset first.</p></div></div>
   </section>
 
+  <!-- ───────────── OPTIMIZE ───────────── -->
+  <section id="tab-optimize" class="tab">
+    <div class="layout">
+      <form class="panel form" id="optform" onsubmit="return false">
+        <h2>Optimize the process</h2>
+        <p class="hint" style="margin-top:0">Plain machine learning on your clean operating data: learn how the KPI depends
+          on the levers you control and the conditions you don't, then recommend lever settings.</p>
+        <button class="secondary" type="button" id="opt-example">Try the example: 60 days of a chilled-water plant</button>
+        <button class="secondary" type="button" id="opt-file" disabled>Use the analysed dataset</button>
+        <div id="opt-config"></div>
+        <div class="status-line" id="opt-status"></div>
+        <p class="hint" style="margin-top:10px">Example data: <a class="link" href="/api/optimize/example.csv">plant_operations_60d.csv</a></p>
+      </form>
+      <div class="panel" id="opt-results">
+        <div class="empty">
+          <h3>From data health to plant savings</h3>
+          <p>Most plants already log what is needed to save energy: the setpoints operators choose, the weather, the
+            load, and the consumption. The data shows which settings worked best in each situation. A gradient-boosting
+            model learns that relation, and the optimizer recommends, for each hour, the lever settings with the best
+            predicted KPI.</p>
+          <ol class="list-plain">
+            <li><b>Clean first.</b> The health report removes error codes, frozen sensors, spikes and duplicate rows before training.</li>
+            <li><b>Choose roles.</b> The <b>KPI</b> to minimize or maximize (plant kW, specific energy, yield); the <b>levers</b> operators set (setpoints, speeds, valve positions); the <b>context</b> they don't (weather, load, feed); and <b>constraints</b> on other outputs (a return temperature, a pressure, a quality limit).</li>
+            <li><b>Honest test.</b> The model is scored on the most recent quarter of the record, which it never saw.</li>
+            <li><b>Safe recommendations.</b> Only settings similar to past operation, moved gradually, respecting every constraint with a margin.</li>
+            <li><b>Actionable output.</b> A setpoint schedule against the main driver (e.g. load), the expected saving with an uncertainty range, and which lever matters most.</li>
+          </ol>
+          <p>No physics model is needed. The physics is used only to check the example: the plant is simulated, so the
+            predicted saving can be compared with the true one.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ───────────── API ───────────── -->
   <section id="tab-api" class="tab">
     <div class="panel">
@@ -103,6 +138,7 @@
           <tr><td>POST</td><td><code>/api/analyze</code></td><td>multipart <code>file</code> (+ optional <code>time_column</code>,
             <code>sheet</code>, <code>units</code> JSON) → report JSON: <code>score</code>, <code>issues</code>,
             <code>columns</code>, <code>relations</code>, <code>summary</code></td></tr>
+          <tr><td>POST</td><td><code>/api/optimize</code></td><td><code>file</code> + <code>config</code> JSON {target, goal, levers, context, constraints, bounds, max_move} → model quality, saving with range, setpoint schedule, partial dependence, importance</td></tr>
           <tr><td>GET</td><td><code>/api/example</code></td><td>report for the built-in example plus its answer key</td></tr>
           <tr><td>GET</td><td><code>/api/example.csv</code></td><td>the example dataset</td></tr>
           <tr><td>GET</td><td><code>/api/meta</code></td><td>accepted formats and limits</td></tr>

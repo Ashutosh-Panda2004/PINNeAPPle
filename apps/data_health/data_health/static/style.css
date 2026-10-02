@@ -56,3 +56,26 @@ input:focus, select:focus { outline: 2px solid #6941c633; }
 .scorebar i { display: block; height: 100%; }
 .answer { font-size: 12.5px; }
 .answer td { padding: 4px 8px; }
+
+/* optimize */
+.roles { margin-top: 12px; }
+.roles h4 { margin: 12px 0 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rolerow { display: grid; grid-template-columns: 18px 1fr 64px 64px; gap: 6px; align-items: center; font-size: 12.5px; padding: 2px 0; }
+.rolerow input[type=checkbox] { width: auto; margin: 0; }
+.rolerow input[type=number] { margin: 0; padding: 3px 5px; font-size: 12px; }
+.rolerow span { overflow-wrap: anywhere; }
+.ctxrow { grid-template-columns: 18px 1fr; }
+.consrow { display: grid; grid-template-columns: 1fr 52px 70px 22px; gap: 5px; align-items: center; margin-top: 4px; }
+.consrow select, .consrow input { margin: 0; padding: 4px 5px; font-size: 12px; }
+.consrow button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
+.saving { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; border-radius: 10px; padding: 14px 18px;
+          background: var(--ok-bg); margin-bottom: 14px; }
+.saving .big { font-size: 34px; font-weight: 800; color: var(--ok); line-height: 1; font-variant-numeric: tabular-nums; }
+.saving .big small { font-size: 14px; font-weight: 600; display: block; margin-top: 4px; }
+.sched td.rec { font-weight: 700; color: var(--brand); }
+.sched td { font-variant-numeric: tabular-nums; }
+.pdgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.imp { display: grid; grid-template-columns: 220px 1fr 70px; gap: 6px 10px; align-items: center; font-size: 12.5px; }
+.imp .track { height: 10px; background: #eef1f5; border-radius: 4px; overflow: hidden; }
+.imp .fill { height: 100%; border-radius: 4px; }
+.truth { border: 1px dashed var(--line); border-radius: 9px; padding: 10px 12px; margin-top: 10px; font-size: 13px; }

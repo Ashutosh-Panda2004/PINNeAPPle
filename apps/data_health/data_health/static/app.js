@@ -243,3 +243,161 @@ function renderColumns() {
   try { const m = await (await fetch("/api/meta")).json(); $("#maxmb").textContent = m.max_mb; } catch { /* offline */ }
 })();
 window.addEventListener("resize", () => { if (REPORT && $("#tab-report").classList.contains("active")) { drawSeries(); drawRelations(); } });
+
+// ── optimize ─────────────────────────────────────────────────────────────────
+let OPT = null;          // {source: "example"|"file", report, roles}
+const PAL = ["#6941c6", "#0b6bcb", "#1a7f4b", "#c2410c"];
+
+function optBusy(btn, txt) {
+  const old = btn.innerHTML; btn.disabled = true;
+  btn.innerHTML = `<span class="spinner" style="border-color:#6941c655;border-top-color:#6941c6"></span>${txt}`;
+  return () => { btn.disabled = false; btn.innerHTML = old; };
+}
+
+$("#opt-example").addEventListener("click", async (e) => {
+  const done = optBusy(e.currentTarget, "Loading…");
+  try {
+    const r = await fetch("/api/optimize/example"); const j = await r.json();
+    if (!r.ok) throw new Error(j.detail);
+    OPT = { source: "example", report: j, roles: j.roles };
+    renderOptConfig();
+  } catch (err) { $("#opt-status").innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+  finally { done(); }
+});
+$("#opt-file").addEventListener("click", () => {
+  if (!REPORT || !FILE) return;
+  OPT = { source: "file", report: REPORT, roles: REPORT.roles };
+  renderOptConfig();
+});
+function syncOptFileButton() { $("#opt-file").disabled = !(REPORT && FILE); }
+setInterval(syncOptFileButton, 1000);
+
+function renderOptConfig() {
+  const cols = OPT.report.columns.filter((c) => c.kind === "numeric");
+  const ro = OPT.roles || {};
+  const opt = (sel) => cols.map((c) => `<option ${c.name === sel ? "selected" : ""}>${esc(c.name)}</option>`).join("");
+  $("#opt-config").innerHTML = `<div class="roles">
+    <h4>KPI</h4>
+    <div class="row2"><select id="o-target">${opt(ro.target)}</select>
+      <select id="o-goal"><option value="minimize" ${ro.goal !== "maximize" ? "selected" : ""}>minimize</option><option value="maximize" ${ro.goal === "maximize" ? "selected" : ""}>maximize</option></select></div>
+    <h4>Levers (what operators set) · min / max</h4>
+    ${cols.map((c) => `<label class="rolerow"><input type="checkbox" data-lever="${esc(c.name)}" ${(ro.levers || []).includes(c.name) ? "checked" : ""}>
+      <span>${esc(c.name)}</span><input type="number" step="any" data-lo="${esc(c.name)}" value="${c.p01 ?? ""}"><input type="number" step="any" data-hi="${esc(c.name)}" value="${c.p99 ?? ""}"></label>`).join("")}
+    <h4>Context (what operators don't control)</h4>
+    ${cols.map((c) => `<label class="rolerow ctxrow"><input type="checkbox" data-ctx="${esc(c.name)}" ${(ro.context || []).includes(c.name) ? "checked" : ""}><span>${esc(c.name)}</span></label>`).join("")}
+    <h4>Constraints on other outputs</h4>
+    <div id="o-cons"></div>
+    <button class="ghost" type="button" id="o-addcons" style="margin-top:6px">+ constraint</button>
+    <label>Largest move per step <span class="u">fraction of each lever's range</span>
+      <input id="o-move" type="number" step="0.05" min="0.05" max="1" value="0.5"></label>
+    <button class="primary" type="button" id="o-run">Train model &amp; optimize</button>
+    <p class="hint">Source: ${OPT.source === "example" ? "example plant (simulated, physics known)" : esc(FILE.name)}. Training takes 10–30 s.</p></div>`;
+  (ro.constraints || []).forEach(addCons);
+  $("#o-addcons").addEventListener("click", () => addCons({}));
+  $("#o-run").addEventListener("click", runOpt);
+}
+function addCons(c) {
+  const cols = OPT.report.columns.filter((x) => x.kind === "numeric");
+  const d = document.createElement("div"); d.className = "consrow";
+  d.innerHTML = `<select>${cols.map((x) => `<option ${x.name === c.column ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+    <select><option ${c.op !== ">=" ? "selected" : ""}>&lt;=</option><option ${c.op === ">=" ? "selected" : ""}>&gt;=</option></select>
+    <input type="number" step="any" value="${c.value ?? ""}"><button type="button">×</button>`;
+  d.querySelector("button").addEventListener("click", () => d.remove());
+  $("#o-cons").appendChild(d);
+}
+
+function optConfig() {
+  const levers = $$("[data-lever]").filter((x) => x.checked).map((x) => x.dataset.lever);
+  const bounds = {};
+  levers.forEach((l) => {
+    const lo = parseFloat($(`[data-lo="${CSS.escape(l)}"]`).value), hi = parseFloat($(`[data-hi="${CSS.escape(l)}"]`).value);
+    if (isFinite(lo) && isFinite(hi) && hi > lo) bounds[l] = [lo, hi];
+  });
+  return { target: $("#o-target").value, goal: $("#o-goal").value, levers, bounds,
+    context: $$("[data-ctx]").filter((x) => x.checked && !levers.includes(x.dataset.ctx)).map((x) => x.dataset.ctx),
+    constraints: $$("#o-cons .consrow").map((r) => { const [c, o] = r.querySelectorAll("select"); const v = parseFloat(r.querySelector("input").value);
+      return isFinite(v) ? { column: c.value, op: o.value, value: v } : null; }).filter(Boolean),
+    max_move: parseFloat($("#o-move").value) || 0.5 };
+}
+
+async function runOpt() {
+  const done = optBusy($("#o-run"), "Training…");
+  $("#opt-status").textContent = "";
+  try {
+    const fd = new FormData();
+    fd.append("config", JSON.stringify(optConfig()));
+    let url = "/api/optimize/example";
+    if (OPT.source === "file") {
+      url = "/api/optimize"; fd.append("file", FILE);
+      if ($("#timecol").value) fd.append("time_column", $("#timecol").value);
+      if ($("#units").value.trim()) fd.append("units", $("#units").value.trim());
+    }
+    const r = await fetch(url, { method: "POST", body: fd });
+    const j = await r.json().catch(() => ({ detail: `HTTP ${r.status}` }));
+    if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail));
+    OPT.result = j; renderOpt();
+  } catch (err) { $("#opt-status").innerHTML = `<span class="err">${esc(err.message)}</span>`; }
+  finally { done(); }
+}
+
+function renderOpt() {
+  const r = OPT.result, m = r.model, s = r.saving, unit = (r.target.match(/\[([^\]]+)\]/) || [])[1] || "";
+  const sched = r.schedule;
+  const maxImp = Math.max(...r.importance.map((i) => i.importance), 1e-9);
+  const ak = r.answer_key;
+  $("#opt-results").innerHTML = `
+    <div class="toolbar"><h2 style="margin:0">${r.goal === "minimize" ? "Lower" : "Higher"} ${esc(r.target)}</h2>
+      <button class="ghost noprint" id="o-dl">Download JSON</button></div>
+    <div class="saving"><div class="big">${s.pct >= 0 ? "" : "+"}${fmt(Math.abs(s.pct), 1)} %<small>predicted ${r.goal === "minimize" ? "reduction" : "increase"}</small></div>
+      <div>Over the test period (${esc(r.rows.test_period[0].slice(0, 10))} → ${esc(r.rows.test_period[1].slice(0, 10))}), applying the recommended lever settings would
+        ${r.goal === "minimize" ? "lower" : "raise"} the KPI by about <b>${fmt(s.per_hour_units, 1)} ${esc(unit)}</b> per sample on average.
+        Range from ${s.ensemble_pct.length} bootstrapped models: <b>${fmt(s.range_pct[0], 1)}–${fmt(s.range_pct[1], 1)} %</b>.
+        ${fmt(s.rows_improved_pct, 0)} % of the samples get a better setting.
+        ${r.constraint_fixes && r.constraint_fixes.needed ? `<br>${r.constraint_fixes.found} of ${r.constraint_fixes.needed} samples where the current setting broke a constraint get a compliant one.` : ""}</div></div>
+    ${ak ? `<div class="truth"><b>Example answer key.</b> Running the recommended setpoints through the plant's true physics gives a
+      <b>${fmt(ak.true_saving_pct, 1)} %</b> saving (${fmt(ak.true_mean_kw_saved, 1)} kW on average), against ${fmt(s.pct, 1)} % predicted.
+      CHW return above its limit: ${fmt(ak.true_constraint_violations_before_pct, 1)} % of the time as operated → ${fmt(ak.true_constraint_violations_pct, 1)} % with the recommendations.</div>` : ""}
+    <h3>Model quality (on data it never saw)</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="l">Mean abs. error</div><div class="v">${fmt(m.mae, 2)}</div><div class="s">${esc(unit)} · ${fmt(m.mape_pct, 1)} %</div></div>
+      <div class="kpi"><div class="l">R²</div><div class="v">${fmt(m.r2, 3)}</div><div class="s">test period</div></div>
+      <div class="kpi"><div class="l">Naive baseline error</div><div class="v">${fmt(m.baseline_mae, 1)}</div><div class="s">predicting the average</div></div>
+      <div class="kpi"><div class="l">Data</div><div class="v" style="font-size:16px">${r.rows.train.toLocaleString()} / ${r.rows.test.toLocaleString()}</div><div class="s">train / test samples (time split)</div></div>
+    </div>
+    ${r.cleaning.length ? `<div class="warnings">${r.cleaning.map((x) => `<div>Cleaning: ${esc(x)}</div>`).join("")}</div>` : ""}
+    ${sched ? `<h3>Recommended setpoint schedule by ${esc(sched.context)}</h3>
+      <div style="overflow-x:auto"><table class="sched"><thead><tr><th>${esc(sched.context)}</th>${r.levers.map((l) => `<th class="num">${esc(l)}<br><span class="meta">now → recommended</span></th>`).join("")}<th class="num">Saving</th></tr></thead><tbody>
+      ${sched.bins.map((b) => `<tr><td>${fmt(b.from, 1)} – ${fmt(b.to, 1)}</td>${r.levers.map((l) => `<td class="num">${fmt(b.current[l], 1)} → <b style="color:#6941c6">${fmt(b.recommended[l], 1)}</b></td>`).join("")}<td class="num">${fmt(b.saving_pct, 1)} %</td></tr>`).join("")}
+      </tbody></table></div><p class="meta">Medians per band. Apply as a reset table (e.g. in the BMS), one band at a time.</p>` : ""}
+    <h3>How each lever moves the KPI</h3>
+    <div class="pdgrid">${r.levers.map((l, i) => `<div><div class="meta">${esc(l)}</div><div id="pd-${i}"></div></div>`).join("")}</div>
+    <h3>What drives the KPI</h3>
+    <div class="imp">${r.importance.map((i) => `<span>${esc(i.feature)} <span class="pill ${i.role === "lever" ? "info" : ""}">${i.role}</span></span>
+      <div class="track"><div class="fill" style="width:${Math.max(0, i.importance) / maxImp * 100}%;background:${i.role === "lever" ? "#6941c6" : "#94a3b8"}"></div></div><span class="meta">${fmt(i.importance, 2)} ${esc(unit)}</span>`).join("")}</div>
+    <p class="meta">Permutation importance: how much the test error grows when that column is shuffled.</p>
+    <h3>Test period: actual, model, optimized</h3>
+    <div id="o-ts"></div>
+    ${r.levers.map((l, i) => `<div class="meta" style="margin-top:8px">${esc(l)}</div><div id="o-lv-${i}"></div>`).join("")}
+    ${window.renderScope ? renderScope(r.scope) : ""}`;
+  $("#o-dl").addEventListener("click", () => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: "application/json" }));
+    a.download = "optimization_result.json"; a.click();
+  });
+  requestAnimationFrame(drawOpt);
+}
+function drawOpt() {
+  const r = OPT && OPT.result; if (!r) return;
+  r.levers.forEach((l, i) => {
+    const p = r.partial_dependence[l];
+    PChart.mount($(`#pd-${i}`), { height: 170, x: p.x.map((v) => +v.toPrecision(4)), yLabel: r.target.replace(/\s*\[.*\]/, ""),
+      series: [{ name: "predicted KPI", y: p.y, color: PAL[i % 4] }] });
+  });
+  const ts = r.series;
+  PChart.mount($("#o-ts"), { height: 240, x: ts.x, legend: true, yLabel: r.target, series: [
+    { name: "measured", y: ts.actual, color: "#94a3b8", width: 1 }, { name: "model, current settings", y: ts.predicted, color: "#0b6bcb", width: 1.2 },
+    { name: "model, recommended settings", y: ts.optimized, color: "#6941c6", width: 1.4 }] });
+  r.levers.forEach((l, i) => PChart.mount($(`#o-lv-${i}`), { height: 130, x: ts.x, legend: true, series: [
+    { name: "current", y: ts.levers[l].current, color: "#94a3b8", width: 1 }, { name: "recommended", y: ts.levers[l].recommended, color: PAL[i % 4], width: 1.3 }] }));
+}
+window.addEventListener("resize", () => { if ($("#tab-optimize").classList.contains("active")) drawOpt(); });
+document.querySelector('#tabs button[data-tab="optimize"]').addEventListener("click", () => requestAnimationFrame(drawOpt));

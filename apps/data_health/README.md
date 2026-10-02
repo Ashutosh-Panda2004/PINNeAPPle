@@ -32,6 +32,31 @@ Library: `pinneapple_data.physical_units`, `pinneapple_data.data_health` (`load_
 - The same plant without faults scores 99.8 / 100.
 - CSV (semicolon, decimal comma, dd/mm dates), Excel, Parquet and JSON versions of the file give the same result.
 
+## Optimize (plain machine learning, no physics model)
+
+The **Optimize** tab turns clean operating data into setpoint recommendations:
+
+1. **Clean.** The data-health findings (error codes, frozen sensors, spikes, impossible values, duplicate rows) are removed before training.
+2. **Choose roles.** Pick the **KPI** to minimize or maximize (plant kW, specific energy, yield), the **levers** operators set (setpoints, speeds, valve positions), the **context** they don't control (weather, load, feed), and **constraints** on other outputs (e.g. CHW return ≤ 13 °C). The roles are suggested from column names.
+3. **Train.** A gradient-boosting model (scikit-learn) predicts the KPI. It is scored on the most recent 25 % of the record, which it never saw.
+4. **Optimize.** For each test-period sample, the model searches lever settings that improve the predicted KPI, subject to:
+   - the lever + context combination must resemble past operation (nearest-neighbour envelope);
+   - each move is limited to a fraction of the lever's range;
+   - each constraint has its own model and is enforced with a one-error margin.
+5. **Report.** The output gives:
+   - the predicted saving, with a range from bootstrapped models;
+   - a setpoint schedule by the main driver;
+   - how each lever moves the KPI, and feature importance.
+
+**Validation.** The example is a simulated chilled-water plant with known physics: 60 days of 15-minute data, with operators' manual setpoint habits.
+- The model predicts plant power within 4.3 kW MAE (R² 0.99) on the last 15 days.
+- The predicted saving is 8.3 % (range 6.9–8.3 %). Running the recommended setpoints through the true physics gives 9.0 %.
+- The CHW return-temperature limit goes from 4.0 % of the time violated to 0.2 %.
+
+Savings on real plants are model estimates from historical correlations. Confirm them with a supervised A/B trial before automating.
+
+Library: `pinneapple_data.process_optimizer` (`suggest_roles`, `clean_for_modeling`, `fit_and_optimize`).
+
 ## Run it
 
 ```bash
