@@ -1,0 +1,39 @@
+/* Simulation Metadata API (base styles in /shared/app.css) */
+:root { --brand: #c2410c; }
+.logo { background: var(--brand); }
+input:focus, select:focus { outline: 2px solid #c2410c33; }
+.layout { grid-template-columns: 360px 1fr; }
+.filelist { margin-top: 8px; display: grid; gap: 4px; }
+.filelist div { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; border: 1px solid var(--line);
+                border-radius: 7px; padding: 5px 8px; }
+.filelist button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; }
+.examples { display: grid; gap: 6px; margin-top: 8px; }
+.examples button { text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 10px;
+                   cursor: pointer; font: inherit; font-size: 12.5px; color: var(--ink); }
+.examples button:hover { border-color: var(--brand); }
+.examples button b { display: block; font-size: 12.5px; }
+.examples button .pill { float: right; }
+.checkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 14px 0; }
+.checkgrid div { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+.checkgrid b { display: block; color: var(--ink); font-size: 13px; }
+.checkgrid span { font-size: 12.5px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-top: 12px; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.card h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.kv { display: grid; grid-template-columns: 150px 1fr; gap: 4px 10px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.verdict { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.verdict.ok { background: var(--ok-bg); } .verdict.warn { background: var(--warn-bg); } .verdict.bad { background: var(--bad-bg); }
+.verdict .big { font-size: 20px; font-weight: 800; }
+.verdict.ok .big { color: var(--ok); } .verdict.warn .big { color: var(--warn); } .verdict.bad .big { color: var(--bad); }
+.verdict ul { margin: 4px 0 0; padding-left: 18px; font-size: 13px; }
+.verdict .recs li { color: var(--ink); }
+.verdict .recs li::marker { content: "→ "; }
+.restable td.num { font-family: var(--mono); font-size: 12px; }
+.bctable td { font-size: 12.5px; } .bctable td.mono { font-family: var(--mono); font-size: 12px; }
+.files td { font-family: var(--mono); font-size: 11.5px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.charts2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 1000px) { .charts2 { grid-template-columns: 1fr; } }
+details.raw summary { cursor: pointer; font-weight: 600; margin-top: 14px; }
+details.raw pre { max-height: 420px; }

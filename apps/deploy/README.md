@@ -1,6 +1,6 @@
-# Deploy both apps on one server
+# Deploy the apps on one server
 
-HeatSink Sizer and PCB Hotspot on a single Linux VM (e.g. Hetzner Cloud), each on its own
+HeatSink Sizer, PCB Hotspot, Engineering Data Health, Engineering Data Standardizer and Simulation Metadata on a single Linux VM (e.g. Hetzner Cloud), each on its own
 subdomain, behind one Caddy that obtains and renews Let's Encrypt certificates automatically.
 
 ```
@@ -14,7 +14,7 @@ Only Caddy publishes ports. The apps are reachable only through it.
 
 ## 1. Server
 
-- **Size:** 4 vCPU / 8 GB RAM is comfortable for both apps (e.g. Hetzner CX32 or CPX31). 2 vCPU / 4 GB works
+- **Size:** 4 vCPU / 8 GB RAM is comfortable for the five apps at demo traffic (e.g. Hetzner CX32 or CPX31). 2 vCPU / 4 GB works
   for demos if you lower `*_MAX_*` to 1 and `*_MEM_LIMIT` to `1500m`.
 - **OS:** Ubuntu 24.04. Add your SSH key when creating it.
 - **Firewall:** allow inbound TCP 22, 80 and 443, plus UDP 443 for HTTP/3.
@@ -27,6 +27,9 @@ At your DNS provider, create two **A** records (and AAAA records if you use IPv6
 |---|---|---|
 | `heatsink` | A | `<server IPv4>` |
 | `pcb` | A | `<server IPv4>` |
+| `datahealth` | A | `<server IPv4>` |
+| `standardizer` | A | `<server IPv4>` |
+| `simmeta` | A | `<server IPv4>` |
 
 If the zone is on Cloudflare, set both records to **DNS only** (grey cloud) for the first start, so
 Let's Encrypt can reach Caddy. Check propagation with `dig +short heatsink.example.org`.
@@ -49,10 +52,10 @@ nano .env        # domains, ACME e-mail, logins (use long passwords)
 
 | Variable | Meaning |
 |---|---|
-| `HSS_DOMAIN`, `PCB_DOMAIN` | Public hostnames (must match the DNS records) |
+| `HSS_DOMAIN`, `PCB_DOMAIN`, `EDH_DOMAIN`, `EDS_DOMAIN`, `SMD_DOMAIN` | Public hostnames (must match the DNS records) |
 | `ACME_EMAIL` | Let's Encrypt account / expiry notices |
-| `HSS_USER` / `HSS_PASSWORD`, `PCB_USER` / `PCB_PASSWORD` | HTTP Basic login per app. If either is empty, that app is public. `/health` is always public. |
-| `HSS_MAX_SIZING`, `PCB_MAX_HEAVY` | Concurrent heavy runs per app. Any excess gets HTTP 429. |
+| `<APP>_USER` / `<APP>_PASSWORD` (HSS, PCB, EDH, EDS, SMD) | HTTP Basic login per app. If either is empty, that app is public. `/health` is always public. |
+| `HSS_MAX_SIZING`, `PCB_MAX_HEAVY`, `EDH/EDS/SMD_MAX_HEAVY` | Concurrent heavy runs per app. Any excess gets HTTP 429. |
 | `HSS_MEM_LIMIT`, `PCB_MEM_LIMIT` | Container memory caps |
 
 ## 5. Start
@@ -73,7 +76,7 @@ Caddy. Start only the apps, attached to that proxy's Docker network, and add two
 ```bash
 docker inspect <proxy container> --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}'
 PROXY_NETWORK=<that network> docker compose -f docker-compose.yml -f docker-compose.existing-proxy.yml \
-  up -d --build heatsink pcb
+  up -d --build heatsink pcb datahealth standardizer simmeta
 ```
 
 Caddyfile blocks for the existing proxy (then `caddy validate` and `caddy reload` inside its container):
@@ -92,6 +95,40 @@ pcb.example.org {
 	reverse_proxy pinneapple-pcb:8081 {
 		transport http {
 			read_timeout 120s
+		}
+	}
+}
+
+datahealth.example.org {
+	encode zstd gzip
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy pinneapple-datahealth:8082 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}
+standardizer.example.org {
+	encode zstd gzip
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy pinneapple-standardizer:8083 {
+		transport http {
+			read_timeout 300s
+		}
+	}
+}
+simmeta.example.org {
+	encode zstd gzip
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy pinneapple-simmeta:8084 {
+		transport http {
+			read_timeout 300s
 		}
 	}
 }

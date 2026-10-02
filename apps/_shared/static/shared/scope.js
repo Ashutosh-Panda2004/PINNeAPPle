@@ -41,9 +41,10 @@
   window.renderScope = function (scope, { open = false } = {}) {
     if (!scope) return "";
     const n = scope.items.length;
+    const tags = { ...TAG, ...(scope.tags || {}) };
     return `<details class="scope"${open ? " open" : ""}>
-      <summary><span>Model scope &amp; validation</span>
-        <span class="meta">${scope.validated.length} independent checks passed · ${n} modelling assumption${n === 1 ? "" : "s"} to know</span></summary>
+      <summary><span>${esc(scope.title || "Model scope & validation")}</span>
+        <span class="meta">${scope.validated.length} independent checks passed · ${n} ${esc(scope.noun || "modelling assumption")}${n === 1 ? "" : "s"} to know</span></summary>
       <div class="scope-body">
         <div>
           <h4>Validated against</h4>
@@ -51,9 +52,9 @@
           <div class="band">${esc(scope.band)}</div>
         </div>
         <div>
-          <h4>What the model assumes</h4>
+          <h4>${esc(scope.items_title || "What the model assumes")}</h4>
           ${scope.items.map((it) => `<div class="item">
-            <b>${esc(it.topic)}</b><span class="tag ${it.effect}">${TAG[it.effect] || esc(it.effect)}</span>
+            <b>${esc(it.topic)}</b><span class="tag ${it.effect}">${esc(tags[it.effect] || it.effect)}</span>
             <div style="margin-top:4px">${esc(it.detail)}</div>
             <div class="row"><span>What to do</span><span>${esc(it.today)}</span></div>
             <div class="row"><span>Roadmap</span><span>${esc(it.planned)}</span></div>
