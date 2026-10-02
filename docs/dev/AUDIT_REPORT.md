@@ -2169,3 +2169,50 @@ Regression discipline used to confirm the above didn't introduce anything new: t
 was run twice (before and after this session's 3 test-infrastructure fixes), and the FAILED test-ID
 **sets** were diffed (not just counts) — see this branch's `.agent/CURRENT_STATE.md` for the actual
 numbers once the second run finishes.
+
+## Immersed-boundary channel mass conservation: 2 real fix attempts, both measured worse than the status quo, reverted (2026-10-02)
+
+Follow-up on the "channel" mode mass-conservation gap documented in the previous section
+(`immersed_boundary_fdm.py`'s divergence-penalty relaxation). The owner asked specifically for this
+to be fixed. Two principled replacements for the pressure step were implemented and measured
+end-to-end on the exact same case (pipe R=0.5, L=3, Re=10, 60x22x22 grid, 1500 steps) used to
+document the original gap, using a flow-rate-integral metric (cross-sectional `integral(u dA)` at
+x = 0.5, 1.5, 2.5, reported as ratios relative to the x=0.5 slice):
+
+| Variant | Ratios (x=0.5, 1.5, 2.5) | Verdict |
+|---|---|---|
+| Status quo (divergence-penalty, 3 Jacobi-equivalent sub-steps) | 1.0, 0.64, 0.49 | baseline |
+| Relaxed-Jacobi Poisson, stride-2 ("wide") stencil consistent with the existing central divergence/gradient | 1.0, 0.55, 0.36 | **worse** |
+| Relaxed-Jacobi Poisson, compact stencil with a backward-divergence/forward-gradient pairing | 1.0, 0.35, 0.05 | **worse** |
+
+Both replacements were individually verified correct in isolation first (the wide stencil drives a
+random test field's divergence to float64 round-off on an open, unmasked cube; the backward/forward
+pairing conserves a flow-rate integral to ~0.6% in a single-shot application on this exact masked
+geometry) — neither is a naive or untested guess. Both still make the FULL, iterated 1500-step
+simulation worse than the status quo. Root cause of each failure (not merely "needs more
+iterations" — checked: both converge/stabilize well before 1500 steps, to a *worse* state, not an
+unstable one):
+
+- **Wide stencil**: on this function's masked, elongated pipe-in-a-box geometry (not the open cube
+  it was validated on), the stride-2 Laplacian's even/odd grid-index decoupling means the mask does
+  not constrain both parity sublattices equally, so the Jacobi iteration converges to a fixed point
+  with real residual divergence in one of them — confirmed unchanged between 60 and 30000 sweeps.
+- **Backward/forward pairing**: algebraically well-posed and locally correct, but the one-sided
+  differencing introduces a directional bias in the pressure force that compounds, over 1500 steps,
+  with the solver's own one-sided upwind convection scheme — net extra numerical dissipation of the
+  axial velocity component, the one that actually matters for this measurement.
+
+**Both changes were reverted** (`git checkout` back to the pre-session state) rather than shipped,
+since neither is actually an improvement. The module's docstring was expanded with the full
+investigation (numbers, root causes, and the recommended real fix) so a future session does not
+have to re-discover any of this. **The real fix for this class of problem (collocated-grid
+pressure-velocity decoupling on an embedded/IBM boundary) is a staggered (MAC) grid** -- storing
+u/v/w at cell faces and p at cell centres, so divergence and the pressure gradient use naturally
+consistent, non-decoupled finite differences -- or, short of a full MAC rewrite, Rhie-Chow momentum
+interpolation (the standard finite-volume patch for exactly this issue). Either is substantial,
+dedicated numerical-methods work on its own, not a pressure-step swap. `solve_ibm_external_flow`
+very likely has the identical underlying issue (it solves a compact Laplacian paired with the same
+central divergence/gradient this module uses elsewhere, i.e. attempt #1 in the previous section's
+list, which this investigation already found to barely move divergence) — not independently
+re-checked this session, since the owner's request was specifically about the internal/channel
+solver, but worth keeping in mind before trusting that function's quantitative flow numbers either.

@@ -52,14 +52,46 @@ classes:
   the geometry bounding box -- the generic setup for external/aerodynamic
   flow around an arbitrary immersed body.
 
-KNOWN LIMITATION (measured 2026-09-27, validation batch 4): ``solve_ibm_internal_flow`` in
-"channel" mode does not conserve mass. Pipe R=0.5, L=3, Re=10, 60x22x22 grid, 1500 steps: the
-flow rate falls to 0.71, 0.45 and 0.34 of the inlet value at x = 0.5, 1.5, 2.5 (divergence_rms
-0.86), because the divergence-penalty relaxation does not project onto a divergence-free field.
-The ~1.5-cell wall band also shrinks the effective radius (profile vanishes near r = 0.45, not 0.5).
-The radial profile shape is parabolic-like (centre / mean ~2.1-2.2 vs Poiseuille 2), but flow rates
-and pressure drops from this mode are not quantitative. Use a pressure-Poisson projection (as in
-``solve_ibm_external_flow``) or a body-fitted solver when those numbers matter.
+KNOWN LIMITATION (measured 2026-09-27, validation batch 4; investigated further 2026-10-02 -- see
+below): ``solve_ibm_internal_flow`` in "channel" mode does not conserve mass. Pipe R=0.5, L=3,
+Re=10, 60x22x22 grid, 1500 steps: the flow rate falls to 0.71, 0.45 and 0.34 of the inlet value at
+x = 0.5, 1.5, 2.5 (divergence_rms 0.86; a flow-rate-integral measurement on the same case gives
+ratios 1.0, 0.64, 0.49 -- a different but equally bad symptom of the same problem). The ~1.5-cell
+wall band also shrinks the effective radius (profile vanishes near r = 0.45, not 0.5) -- a separate,
+minor IBM-resolution effect, not the mass-conservation issue below.
+
+NOT A QUICK FIX -- replacing the pressure step is not enough on its own (investigated 2026-10-02,
+two real attempts, both measured WORSE than the status quo on the exact case above, not better):
+1. Pairing this function's existing CENTRAL divergence/gradient with a converged Jacobi solve of
+   the natural COMPACT 3-point Laplacian does essentially nothing (confirmed: 20000 Jacobi sweeps
+   on a random test field reduce central divergence by only ~12%) -- composing two central
+   differences (div of grad) algebraically reduces to a STRIDE-2 Laplacian, not the compact one.
+2. Solving the matching STRIDE-2 ("wide") Laplacian instead is algebraically consistent and drives
+   divergence to float64 round-off on an open, unmasked test cube -- but on THIS function's masked,
+   elongated pipe-in-a-box geometry it gets stuck at a nonzero fixed point (unchanged from 60 to
+   30000 Jacobi sweeps): the stride-2 stencil decouples the even/odd grid-index sublattices into two
+   independent problems, and this geometry's mask does not constrain them equally. Flow-rate ratios
+   with this fix: 1.0, 0.55, 0.36 -- worse than the status quo.
+3. Pairing a BACKWARD-difference divergence with a FORWARD-difference gradient correction and the
+   compact Laplacian IS algebraically well-posed (no stride mismatch, no parity decoupling -- a
+   single-shot test confirmed it conserves a cross-sectional flow-rate integral to ~0.6% on this
+   exact masked geometry). But run through the actual 1500-step time integration, it is WORSE than
+   the status quo (flow-rate ratios 1.0, 0.35, 0.05) and gets there by converging smoothly (not by
+   diverging/instability -- checked at 100/300/700/1500 steps, monotonically approaching that bad
+   state) -- most likely the one-sided forward/backward pairing introduces a directional bias in
+   the pressure force that compounds with the (also one-sided) upwind convection scheme over many
+   repeated applications, net effect extra numerical dissipation of exactly the velocity component
+   that matters (axial, along the channel).
+
+The real, standard fix for this class of problem (collocated-grid pressure-velocity decoupling on
+an embedded/IBM boundary) is a staggered (MAC) grid -- store u/v/w at cell FACES and p at cell
+CENTRES, so divergence and the pressure gradient naturally use consistent, non-decoupled finite
+differences -- or, short of a full MAC rewrite, Rhie-Chow momentum interpolation (the standard
+collocated-grid patch for exactly this issue in finite-volume CFD). Either is a substantial,
+dedicated piece of numerical-methods work, not a pressure-step swap; use a pressure-Poisson
+projection (as in ``solve_ibm_external_flow``, which likely has the SAME underlying issue, not
+independently re-checked here) or a body-fitted solver when quantitative flow rates/pressure drops
+from THIS function's "channel" mode matter.
 
 Both functions take only plain arrays / scalars (wall point cloud, bbox,
 Reynolds number, inlet velocity, density, grid resolution, iteration count)
