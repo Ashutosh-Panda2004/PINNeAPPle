@@ -29,6 +29,19 @@ ruff format .
 - Add or update tests when possible
 - Update docs/examples if behavior changes
 
+## Changelog
+Every user-visible change (new feature, bug fix, behavior change, removal) needs one line under
+`## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md), in the same pull request. Use the headings
+Added / Changed / Fixed / Removed / Documentation / Known issues. While the major version is 0, start any
+breaking or behavior-changing entry with **Breaking:** or **Behavior:**. Maintainers move the Unreleased
+entries under a dated version heading when they cut a release (see below). Purely internal changes
+(refactors, test-only, CI) do not need an entry.
+
+## Releasing (maintainers)
+1. Move the `[Unreleased]` entries under `## [x.y.z] - YYYY-MM-DD` and update the compare links at the bottom.
+2. Bump `version` in `pyproject.toml` and `CITATION.cff`.
+3. Tag the release commit `vx.y.z` and publish to PyPI **from that tag**, so the tag and the PyPI files match.
+
 ## Commit style
 We recommend Conventional Commits (optional), e.g.:
 - feat: add shard-aware iterator

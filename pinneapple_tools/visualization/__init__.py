@@ -43,6 +43,18 @@ from .solver import (
     plot_residuals,
 )
 
+# PyVista 3-D rendering (optional dependency: pip install "pinneapple[pyvista]")
+from .pyvista_bridge import (
+    calculix_grid,
+    scene_to_multiblock,
+    grid_from_arrays,
+    von_mises,
+    export_vtk,
+    can_render,
+    render_png,
+    render_gif,
+)
+
 from .mesh import (
     plot_mesh,
     plot_boundary,
@@ -97,4 +109,7 @@ __all__ = [
     "compute_q_criterion_3d", "compute_lambda2_3d",
     "plot_vorticity", "plot_q_criterion_2d", "plot_q_criterion_3d",
     "plot_vortex_identification", "plot_lbm_flow", "plot_flow_panel",
+    # PyVista bridge
+    "calculix_grid", "scene_to_multiblock", "grid_from_arrays", "von_mises",
+    "export_vtk", "can_render", "render_png", "render_gif",
 ]

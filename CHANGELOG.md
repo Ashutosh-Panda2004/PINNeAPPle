@@ -1,0 +1,244 @@
+# Changelog
+
+All notable changes to PINNeAPPle (the `pinneapple` package on PyPI) are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow
+[Semantic Versioning](https://semver.org/) with one caveat: **while the major version is 0, a minor release
+(0.x.0) may contain breaking changes.** Every breaking or behavior-changing entry is listed under
+**Changed** and starts with "**Breaking:**" or "**Behavior:**".
+
+How this file is maintained is described in [CONTRIBUTING.md](CONTRIBUTING.md#changelog). The entries for
+0.5.0 and later were reconstructed from the git history and checked against the files published on PyPI.
+
+## [Unreleased]
+
+Merged after the 0.6.2 release (not on PyPI yet).
+
+### Added
+- `LRAnnealing` loss balancer (Wang, Teng & Perdikaris 2021), wired into `WeightScheduler` as
+  `method="lr_annealing"` (#23).
+- OpenRadioss connector: deck editing, Docker runner and VTK reader
+  (`pinneapple_simulation.external_solvers.openradioss`) (#24).
+- Native Transolver (`PhysicsAttention`, `Transolver`, `TransolverLite`), registered as `transolver_native`,
+  `physics_attention_transolver` and `transolver_lite` (#24).
+- Solvers: HLLC/MUSCL compressible finite volume (`compressible_fv`, checked against Sod's exact solution and the
+  Rankine–Hugoniot normal-shock jump), pseudo-spectral 3-D Navier–Stokes DNS (`ns3d_spectral`) and a 2-D
+  heated-channel incompressible solver (`thermal_channel_2d`) (#24).
+
+- `pinneapple_analysis.cost`: computational-cost validation per operation. `measure` (median time with spread, peak
+  memory, exact PyTorch FLOPs), `scaling_study` (fits `cost ~ n^k` with a bootstrap confidence interval and compares
+  it with a declared complexity such as `"n log n"`), `Budget` (time, memory, FLOPs, exponent limits) and `CostLedger`
+  (saved baseline; FLOPs gate strictly, time and memory loosely). `pinn_operation_costs` splits one PINN training
+  step into forward, first and second derivatives, backward and optimizer step; `profile_ops` gives a per-operator table.
+- `pinneapple_tools.visualization.pyvista_bridge` and the `pinneapple[pyvista]` extra: CalculiX model plus `.frd`
+  results to a PyVista grid (displacement, von Mises, optional exaggerated warp; C3D4/C3D8/C3D10/C3D20 families, checked
+  against beam theory and box volume), `pinneapple_twin3d` scenes to `MultiBlock`, `.vtu` export for ParaView and
+  off-screen PNG/GIF rendering. `can_render()` probes for an OpenGL context in a subprocess because VTK crashes the
+  interpreter when none exists; on a headless server use `xvfb-run -a`.
+- `pinneapple[cost]` extra (psutil) for CPU memory sampling in the cost module.
+- GitHub issue forms (bug report, feature request) and a pull request template; CI runs a blocking tier for the public
+  API, cost module and the PyVista and CalculiX bridges.
+- Example `examples/calculix_pyvista_cantilever.py`.
+
+### Changed
+- **Behavior:** `bekker_wong` terramechanics rewritten: input validation, break points at the stress kinks,
+  sign-aware shear for braking, Brent's method for sinkage, no fabricated values when the solver fails, and a
+  vectorised, autograd-differentiable batched Gauss–Legendre quadrature (#24).
+- **Behavior:** terramechanics preset: removed a false physics constraint (`Fx(s=0)=0`, which the solver itself
+  violates) and added a verified one (`dFz/dz >= 0`) (#24).
+
+### Fixed
+- `from pinneapple import *` and `getattr` on 24 names in `pinneapple.__all__` failed: lazy aliases such as `pp.uq`, `pp.geom`,
+  `pp.dt`, `pp.export` pointed at module names that never existed (`pinneapple_uq`, `pinneapple_geom`, ...) and the
+  streamline, world-model and scene imports used names that are not exported. Aliases now point to the real packages
+  (for example `pp.uq` is `pinneapple_analysis.uncertainty`); `pp.serve` is removed (no such module);
+  `plot_streamlines_2d_model` is `plot_streamlines_2d_from_model`; the world-model names `CosmosAdapter`,
+  `PhysicsVideoDataset`, `SimToRealAdapter`, `PhysicalScene` and `SceneObject` never existed and are replaced by
+  `PhysicsWorldModel`, `WorldModelDataset`, `WorldModelTrainer` and `PhysicsScenario`. A test now resolves every name.
+- `pp.info()` reported "optional deps missing" for modules that do not exist; it now imports the real packages and lists
+  optional third-party dependencies with the extra that installs each.
+- `LICENSE` was a truncated Apache-2.0 text (end of section 4 and the appendix were missing); replaced with the canonical text.
+
+### Documentation
+- Recorded two failed attempts to fix mass conservation in the immersed-boundary `channel` mode (both reverted,
+  both measured worse than the current behavior) (#25).
+
+## [0.6.2] - 2026-10-02
+
+### Added
+- Validation batch 4: exact-solution tests for FEM Q1, Kansa RBF, axisymmetric eddy current, the compressor
+  similarity map, Buckley–Leverett, neo-Hookean, thermoelasticity, Biot (Terzaghi mode) and Heston (84 validated
+  items in total) (#19).
+- Example: interactive shallow-water dam-break demo viewed in Twin3D (#21).
+- Benchmarks: the PK-PD benchmark was re-run for real with all four optimizer variants (#20).
+- Reference applications in the repository under `apps/` (not part of the wheel): HeatSink Sizer, PCB Hotspot,
+  Engineering Data Health (with an Optimize tab), Engineering Data Standardizer and Simulation Metadata API, a shared
+  app kit, and a single-server Docker/Caddy deployment (also usable behind an existing reverse proxy) (#18).
+- `pinneapple_app` (repository only, not packaged): experiments apply real physics, runs are seeded and split into
+  train, calibration and test sets, and every model gets a surrogate trust report (held-out error, convergence,
+  generalization, uncertainty with split conformal coverage, physics checks) (#18).
+
+### Changed
+- **Behavior:** `GradNormBalancer` update is now `w * target / ||grad(w L)||`, with the global L2 gradient norm over
+  the shared layer. Weights now reach the GradNorm target in one step and stay stationary for unchanged losses (#17).
+
+### Fixed
+- `GradNormBalancer` divided by the weighted gradient norm twice, so it converged to square-root balancing and
+  oscillated (#17).
+- FEM and Kansa solvers crashed on any Dirichlet condition (an `isinstance` check against the `DirichletBC` factory).
+  A shared `_bc` helper now accepts the builder contract `(X, ctx)` and one-argument callables, and tells an arity
+  mismatch from a real `TypeError` by inspecting the signature (#19).
+- Kansa multiquadric Laplacian used `(d-2)` instead of `(d-1)`, and Kansa now honours the input dtype (#19).
+- `axial_flux_density` returned `-B_z` and dropped the quadrature part (#19).
+- The neo-Hookean residual differentiated the Cauchy stress in reference coordinates; it now uses `Div_X P` (#19).
+- `pinneapple_app` experiments never applied physics: a bare `try/except` hid a `KeyError` every epoch, boundaries
+  were forced to `u = 0`, custom equations were a `* 0.0` placeholder, and leaderboard metrics used the training
+  points (repository only) (#18).
+
+### Known issues
+- The immersed-boundary `channel` mode does not conserve mass (documented in the module).
+
+## [0.6.1] - 2026-09-27
+
+### Added
+- CalculiX bridge: `.inp` and `.frd` I/O, a `ccx` runner (Debian-based Docker image built from the bundled
+  Dockerfile), and `pinneapple-ccx`, a drop-in `ccx` command whose fields come from a PINN or surrogate. It has a
+  validity-envelope guard, a `--fallback` to the real `ccx` and a provenance JSON per job. Validated: C3D20R
+  cantilever tip deflection within 0.94 % of Timoshenko theory.
+- Large Physics Model blocks (`pinneapple_neural.lpm`): Fourier positional encoding, multi-scale neighbourhood
+  features, DeepSets geometry code, operating-parameter conditioning, bagged-ensemble heads, a geometry-code
+  out-of-distribution score and fine-tuning with a frozen geometry encoder. 3.1 % mean relative L2 on unseen designs
+  in a potential-flow benchmark, with out-of-range designs flagged.
+- `pinneapple_analysis.uncertainty.posterior_metrics`: PosteriorBench metrics (multi-scale-kernel MMD, sliced
+  Wasserstein, radially averaged power-spectrum error, mean/std relative L2), ported from
+  neuraloperator/PosteriorBench (MIT).
+- Twin3D: OpenFOAM case to scene (wall patches and per-face values over time, ASCII and binary polyMesh), OpenUSD export
+  with time-sampled fields, scan cleaning and MuJoCo/MJCF import, plus viewer fixes.
+- `pinneapple_systems.digital_twin.conditioning`: causal per-signal telemetry conditioning (Hampel, rate limit,
+  dt-aware filter, gap and stale handling).
+- `pinneapple_arena.autoresearch`: fixed-budget trial loop with keep/revert over a tunable block, with random-search
+  and LLM proposers.
+- Advanced CadQuery builders (flanged pipe bend, tee, concentric reducer, helical coil, axial fan, involute spur gear,
+  pin-fin heat sink) and `register_advanced_templates`.
+- 2-D shallow-water finite-volume solver (MUSCL-HLL, wet/dry, drawable walls, probes and health checks), validated on
+  Ritter and Stoker dam breaks.
+- Geometry retrieval (D2 descriptors with a caption index), a research-only set-based encounter-feasibility module,
+  and benchmarks for the Helmholtz, stiff PK-PD, inviscid Burgers and Sod problems with independent references.
+
+### Fixed
+- The sdist did not include `pinneapple_decision`, so `import pinneapple_arena` failed from the sdist since 0.6.0.
+  A test now checks that every wheel package is in the sdist include list (#16).
+- `beam_bvp_fdm` boundary conditions made every deflection first order (-4.8 % at `nx = 100`); ghost-node boundary
+  conditions make it second order for simply supported, cantilever and fixed-fixed beams.
+- `spectral.poisson_periodic_fft` used float32 wavenumbers, capping a float64 solve at about 1e-7; it is now exact to
+  round-off.
+- `tvd_advection_rhs` used the downwind slope in the limiter in both flow directions, so the scheme was not TVD (22 %
+  overshoot on a square wave); the upwind ratio of Sweby (1984) is used now.
+- `TabulatedSignal` converts tensors with `.numpy()` (NumPy 2 deprecation).
+
+## [0.6.0] - 2026-09-25
+
+### Added
+- `pinneapple_decision`: `PhysicsDecisionEngine`, a probabilistic layer that decides which experiment to run next (model,
+  training strategy, validation) and never predicts physical results. It includes `pp.decide`, a problem adapter, a
+  decision tree, an Arena decision mode and surrogate families for KPI regression, POD reduced-order models, point-cloud
+  operators and hybrids (#10, #11, #12).
+- `pinneapple_catalog.resources` (58 public datasets, CAD sets, pretrained models and benchmarks with checked licenses;
+  research-only items warn and are refused when `PINNEAPPLE_COMMERCIAL_MODE=1`) and `pinneapple_catalog.methods` (every
+  solver, training method, equation and problem with code location, references and a validation status computed from the
+  tests) (#14).
+- `pinneapple_twin3d`: 3-D digital-twin scene export (glTF, transient fields, sensors with alarm envelopes) and a bundled
+  three.js viewer (#14).
+- `SelfScaledQuasiNewton` trainer: BFGS, SSBFGS and SSBroyden (Urban, Stefanou & Pons 2025) (#14).
+- PINNFactory: undeclared functions of the independent variables become exogenous signals fed from tensors or
+  `TabulatedSignal` (#14).
+- `hybrid_surrogate_physics` workflow: a surrogate of intermediate quantities followed by an explicit physics post-model,
+  with Gaussian-process and PCA surrogates (#13).
+- Pluggable `grad_method` for `SymbolicPDE` (`autograd`, `finite_difference`, `spectral`).
+- Geometry out-of-distribution guardrail (diagonal Mahalanobis) as a fifth component of `PhysicsConfidenceScore`.
+- Robin and radiative-Robin boundary conditions in `FDMSolver` (#7).
+- `pinneapple_physics.closed_form`: engineering formulas ported back from PINNeAPPle-apps.
+- Parametric (Re_tau-conditioned) dense-volume operator workflow.
+- Analytic tag-geometry fixtures for `solve_pde`, real standard geometry for 29 of the 40 tag-based presets, and new
+  compiler mechanisms (`normal_stress_field`, `thermal_bc`).
+- CI: pre-commit configuration that enforces the ruff settings of `pyproject.toml`.
+
+### Changed
+- **Behavior:** `PhysicsConfidenceScore` now has five components instead of four, so scores change.
+- **Behavior:** the `euler_bernoulli_beam` residual used the wrong sign for a compressive axial load; it now uses the
+  beam-column equation `EI w'''' + F w''`, so compressive loads destabilize the beam as they should.
+- **Breaking:** `AleatoricHead` takes the input `x` and a new required `in_dim` constructor argument. Before, its
+  log-variance head received the model's point prediction, so the variance was not heteroscedastic.
+- **Behavior:** `AFNOLayer` was rewritten to match Guibas et al. (2022) (block-diagonal weights shared across frequencies
+  and frequency-domain soft-shrinkage). Before, it was a per-mode spectral convolution under the AFNO name. Checkpoints
+  trained with the old layer do not load.
+- **Behavior:** Noether integrations are marked research-only, behind a license guard (#9).
+- **Behavior:** `solve_pde()` now fails loudly when tag-based conditions have no real geometry input instead of continuing.
+- CI no longer hides failures with `|| true`.
+- Repository URLs and the citation version were updated after the move to the `PINNeAPPle-Labs` organization, and a dead
+  `Changelog` link was removed from `pyproject.toml`.
+
+### Fixed
+- Arena fed graph models their own targets as node features (target leak) (#8).
+- Conformal prediction used linear interpolation for the quantile instead of the exact order statistic
+  `ceil((n+1)(1-alpha))`, which understated intervals for small calibration sets.
+- `MCDropoutWrapper` and the uncertainty decomposition called `model.train()` on the whole model, which switched BatchNorm
+  to batch statistics and permanently changed the caller's running statistics. Only Dropout-family modules are activated now.
+- `DFSPH` alpha was missing the stabilizing `sum_j ||m_j grad W_ij||^2` term of Bender and Koschier.
+- `STLDomainBatchBuilder` ignored the `y_bc` of Neumann and Robin conditions.
+
+## [0.5.0] - 2026-09-11
+
+First release on PyPI. The git tag `v0.5.0` points to 2026-09-08; the files uploaded to PyPI on 2026-09-11 also contain
+the work committed up to 2026-09-11 12:53 (-03:00), for example the evidence graph, retrieval and the OPC-UA/Modbus
+adapters listed below.
+
+### Added
+- New packages: `pinneapple_registry` (local artifact registry for models, datasets and experiments),
+  `pinneapple_perception` (physics from images, video and audio, with a PIV extractor validated on a known shift),
+  `pinneapple_pdb` (named benchmark catalog), `pinneapple_hub` (model hub with a governance gate:
+  `scripts/validate_model_card.py` rejects a model card without `validation_metrics` and `reference_source`), and
+  `pinneapple_llm` modules for constrained CAD/geometry drafting and a LoRA fine-tuning pipeline.
+- `process_components` and `component_library`: generic process-engineering physics and reference component models.
+- Astrophysics and space specialization: Kepler two-body, Clohessy–Wiltshire relative motion, J2 perturbation, spacecraft
+  attitude, CR3BP, GR light bending and Shakura–Sunyaev disk presets.
+- Verification: `PhysicsGuardrail` dimensional-analysis and conservation checks, reference-data fetch from UPD zarr, grid
+  convergence analysis, `evidence_graph`, tool and architecture recommendation with an adversarial critique, and the
+  verification modules moved into `pinneapple_analysis.verification`.
+- Analysis and twins: Kalman-filter state estimation as a general `pinneapple_analysis` module, trend-based remaining
+  useful life in `digital_twin`, OPC-UA and Modbus stream adapters with live simulator tests, and MQTT/Kafka broker
+  integration tests.
+- Retrieval: local semantic search over a real corpus, live arXiv search, and `answer_with_context` for grounded RAG answers.
+- Simulation: OpenFOAM binary and polyMesh readers, WALE LES, ANSYS Fluent coupling, IGES import, LBM3D obstacles and LES
+  with a turbulence-model selector, and CGNS/Exodus/Fluent readers checked against real writers.
+- Arena: physics-aware model ranking and architecture plus hyperparameter search; `PhysicsCase` as a bridge between
+  geometry, physics spec, solver and results; a splash-archive adapter with a dense-volume neural-operator workflow;
+  a VLM dataset-curation module.
+- Dozens of previously unsupported PDE kinds now compile (steady Navier–Stokes, steady heat, plane stress and strain,
+  rotating-frame flows, Black–Scholes, Heston, phase-field fracture, axisymmetric variants and more).
+
+### Fixed
+- 152 scientific and mathematical findings from a full audit across 29 modules (equation errors, sign conventions, unit
+  mismatches, discretization bugs, deviations from the cited papers, broken API signatures).
+- `pytest tests/` aborted at collection with four `ModuleNotFoundError`s, silently blocking every test; fixed together with
+  four more bugs it exposed.
+- `TrimeshBridge.load()` crashed on current trimesh, `export_onnx` failed with torch 2.5 and later, three structural
+  presets silently dropped the Lamé lambda, and the LLM CSG cut-operand ordering was ambiguous.
+- Packaging: removed a console-script entry point to a missing module (`pinneapple_pdb.cli`) and a license classifier that
+  conflicted with the SPDX expression; added an explicit sdist include list (20 MB to 1.8 MB).
+
+### Known issues
+- The `Changelog` project URL in the 0.5.0 package metadata points to a `CHANGELOG.md` that did not exist when it was
+  published. This file is that changelog.
+
+## Before 0.5.0
+
+Development before the first PyPI release is not itemized. In short: the initial open-source release (2026-01-23), the
+PINN Arena and benchmark suite, the refactor into the current mega-modules (2026-05-06), the rename from `pinneaple` to
+`pinneapple` (2026-05-18), and the Physics Synthetic Data Factory and the 9-stage pipeline (2026-06-04).
+
+[Unreleased]: https://github.com/PINNeAPPle-Labs/PINNeAPPle/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/PINNeAPPle-Labs/PINNeAPPle/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/PINNeAPPle-Labs/PINNeAPPle/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/PINNeAPPle-Labs/PINNeAPPle/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/PINNeAPPle-Labs/PINNeAPPle/releases/tag/v0.5.0

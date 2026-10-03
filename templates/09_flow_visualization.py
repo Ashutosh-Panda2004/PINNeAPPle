@@ -3,7 +3,7 @@
 Demonstrates:
 - FlowVisualizer for high-level figure generation
 - compute_streamlines with RK4 integration on a 2D grid
-- plot_streamlines_2d_model using a trained PINN
+- plot_streamlines_2d_from_model using a trained PINN
 - compute_isosurface for a 3D scalar field (marching cubes)
 """
 
@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 from pinneapple_neural.predictor.postprocess import (
     FlowVisualizer,
     compute_streamlines,
-    plot_streamlines_2d_model,
+    plot_streamlines_2d_from_model,
     compute_isosurface,
 )
 
@@ -82,7 +82,7 @@ def main():
     # --- 2D Flow: model-driven plot ---------------------------------------
     rotation_model = AnalyticRotationModel()
 
-    fig_2d = plot_streamlines_2d_model(
+    fig_2d = plot_streamlines_2d_from_model(
         model=rotation_model,
         x_range=(-1.5, 1.5),
         y_range=(-1.5, 1.5),

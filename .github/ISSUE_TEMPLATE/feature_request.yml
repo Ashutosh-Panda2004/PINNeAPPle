@@ -1,0 +1,21 @@
+name: Feature request
+description: A solver, model, benchmark, connector or workflow you would like to see
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What do you want to do?
+      description: Describe the engineering task first, then the feature.
+    validations: {required: true}
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference
+      description: Paper, standard, or existing tool that defines the expected behavior (with its license if you want code ported).
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this (see CONTRIBUTING.md)

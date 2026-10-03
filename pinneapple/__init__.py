@@ -313,7 +313,7 @@ except Exception:  # pragma: no cover
 try:
     from pinneapple_neural.predictor import (
         FlowVisualizer, compute_streamlines, compute_isosurface,
-        plot_streamlines_2d_model, plot_isosurface_3d, plot_volume_slice,
+        plot_streamlines_2d_from_model, plot_isosurface_3d, plot_volume_slice,
     )
 except Exception:  # pragma: no cover
     pass
@@ -340,9 +340,9 @@ except Exception:  # pragma: no cover
 # World foundation model integration (Feature 19)
 try:
     from pinneapple_worldmodel import (
-        CosmosAdapter, WorldModelConfig,
-        PhysicsVideoDataset, SimToRealAdapter,
-        PhysicalScene, SceneObject,
+        PhysicsWorldModel, WorldModelConfig,
+        WorldModelDataset, WorldModelTrainer,
+        PhysicsScenario,
     )
 except Exception:  # pragma: no cover
     pass
@@ -474,33 +474,47 @@ def info():
     except Exception:
         pass
 
-    # New modules status
-    new_modules = {
-        "pinneapple_uq":         "Uncertainty quantification",
-        "pinneapple_transfer":   "Transfer learning",
-        "pinneapple_meta":       "Meta-learning (MAML/Reptile)",
-        "pinneapple_validate":   "Physical validation",
-        "pinneapple_serve":      "REST inference server",
-        "pinneapple_export":     "Model export (ONNX/TorchScript)",
-        "pinneapple_quantum":    "Hybrid classical–quantum ML (PQM)",
-        # v0.5 new modules
-        "pinneapple_symbolic":   "Symbolic PDE compiler + HardBC/PeriodicBC",
-        "pinneapple_backend":    "Multi-backend (PyTorch + JAX)",
-        "pinneapple_dynamics":   "Differentiable dynamics (rigid body, MPM, SPH)",
-        "pinneapple_worldmodel": "World foundation model integration (Cosmos)",
-    }
     import importlib
+    import importlib.util
+
+    # Subpackages: imported for real, so a missing one is a bug, not a missing extra.
+    packages = {
+        "pinneapple_analysis.uncertainty":      "Uncertainty quantification",
+        "pinneapple_adaptation.transfer_learning": "Transfer learning",
+        "pinneapple_adaptation.meta_learning":  "Meta-learning (MAML/Reptile)",
+        "pinneapple_analysis.validation":       "Physical validation",
+        "pinneapple_tools.model_export":        "Model export (ONNX/TorchScript)",
+        "pinneapple_quantum":                   "Hybrid classical–quantum ML (PQM)",
+        "pinneapple_physics.symbolic_pde":      "Symbolic PDE compiler + HardBC/PeriodicBC",
+        "pinneapple_tools.compute_backends":    "Multi-backend (PyTorch + JAX)",
+        "pinneapple_simulation.particle_dynamics": "Differentiable dynamics (rigid body, MPM, SPH)",
+        "pinneapple_worldmodel":                "Physics world models",
+        "pinneapple_decision":                  "Decision layer (which experiment to run next)",
+    }
     print()
-    print("  Advanced modules:")
-    for mod, desc in new_modules.items():
+    print("  Packages:")
+    for mod, desc in packages.items():
         try:
             importlib.import_module(mod)
             status = "OK"
-        except ImportError:
-            status = "optional deps missing"
+        except ImportError as e:
+            status = f"import failed: {e}"
         except Exception as e:
             status = f"error: {e}"
-        print(f"    {mod:<26} [{status}]  — {desc}")
+        print(f"    {mod:<42} [{status}]  — {desc}")
+
+    # Optional third-party dependencies, with the pip extra that installs each.
+    optional = [
+        ("jax", "jax_cfd"), ("pyvista", "pyvista"), ("matplotlib", "viz"),
+        ("cadquery", "cad"), ("trimesh", "geom"),
+        ("onnx", "export"), ("fastapi", "serve"), ("mujoco", "mujoco"),
+    ]
+    print()
+    print("  Optional dependencies:")
+    for dist, extra in optional:
+        ok = importlib.util.find_spec(dist) is not None
+        hint = "" if ok else f"  → pip install \"pinneapple[{extra}]\""
+        print(f"    {dist:<12} [{'OK' if ok else 'not installed'}]{hint}")
 
 
 # ---------------------------------------------------------------------------
@@ -512,31 +526,30 @@ import sys as _sys
 
 _SUBMODULES = {
     # core
-    "env":        "pinneapple_environment",
-    "inverse":    "pinneapple_inverse",
-    "design_opt": "pinneapple_design_opt",
+    "env":        "pinneapple_physics.pde_environment",
+    "inverse":    "pinneapple_analysis.inverse_problems",
+    "design_opt": "pinneapple_design.design_optimizer",
     "models":    "pinneapple_models",
     "train":     "pinneapple_train",
     "solvers":   "pinneapple_solvers",
     "data":      "pinneapple_data",
-    "geom":      "pinneapple_geom",
-    "inference": "pinneapple_inference",
-    "pinn":      "pinneapple_pinn",
-    "dt":        "pinneapple_digital_twin",
+    "geom":      "pinneapple_design.geometry",
+    "inference": "pinneapple_neural.predictor",
+    "pinn":      "pinneapple_physics.pinn_solver",
+    "dt":        "pinneapple_systems.digital_twin",
     "arena":     "pinneapple_arena",
     # advanced
-    "uq":        "pinneapple_uq",
-    "transfer":  "pinneapple_transfer",
-    "meta":      "pinneapple_meta",
-    "validate":  "pinneapple_validate",
-    "serve":     "pinneapple_serve",
-    "export":    "pinneapple_export",
+    "uq":        "pinneapple_analysis.uncertainty",
+    "transfer":  "pinneapple_adaptation.transfer_learning",
+    "meta":      "pinneapple_adaptation.meta_learning",
+    "validate":  "pinneapple_analysis.validation",
+    "export":    "pinneapple_tools.model_export",
     # quantum
     "quantum":   "pinneapple_quantum",
     # new features (v0.5)
-    "symbolic":   "pinneapple_symbolic",
-    "backend":    "pinneapple_backend",
-    "dynamics":   "pinneapple_dynamics",
+    "symbolic":   "pinneapple_physics.symbolic_pde",
+    "backend":    "pinneapple_tools.compute_backends",
+    "dynamics":   "pinneapple_simulation.particle_dynamics",
     "worldmodel": "pinneapple_worldmodel",
     # decision layer (which experiment to run next)
     "decision":   "pinneapple_decision",
@@ -631,7 +644,7 @@ __all__ = [
     "env", "models", "train", "solvers", "data", "geom",
     "inference", "pinn", "dt", "arena", "design_opt",
     # Lazy submodule aliases (advanced)
-    "uq", "transfer", "meta", "validate", "serve", "export",
+    "uq", "transfer", "meta", "validate", "export",
     # Quantum
     "quantum",
     # ---- v0.5 new features ----
@@ -659,7 +672,7 @@ __all__ = [
     "lshape", "csg_annulus", "channel_with_hole", "t_junction",
     # Post-processing viz (Feature 17)
     "FlowVisualizer", "compute_streamlines", "compute_isosurface",
-    "plot_streamlines_2d_model", "plot_isosurface_3d", "plot_volume_slice",
+    "plot_streamlines_2d_from_model", "plot_isosurface_3d", "plot_volume_slice",
     # Multi-backend (Feature 15)
     "get_backend", "set_backend", "Backend", "JAXBackend", "jit_pinn", "vmap_residual",
     # Dynamics (Feature 18)
@@ -667,9 +680,8 @@ __all__ = [
     "MPMSimulator", "MPMState",
     "SPHParticles", "ParticleSystem",
     # World model (Feature 19)
-    "CosmosAdapter", "WorldModelConfig",
-    "PhysicsVideoDataset", "SimToRealAdapter",
-    "PhysicalScene", "SceneObject",
+    "PhysicsWorldModel", "WorldModelConfig",
+    "WorldModelDataset", "WorldModelTrainer", "PhysicsScenario",
     # Adjoint shape opt (Feature 16)
     "ContinuousAdjointSolver", "ShapeParametrization",
     "DragAdjointObjective", "naca_parametric",
