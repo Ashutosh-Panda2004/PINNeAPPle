@@ -281,9 +281,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/barrosyan/PINNeAPPle"
-Repository = "https://github.com/barrosyan/PINNeAPPle"
-Issues = "https://github.com/barrosyan/PINNeAPPle/issues"
+Homepage = "https://github.com/PINNeAPPle-Labs/PINNeAPPle"
+Repository = "https://github.com/PINNeAPPle-Labs/PINNeAPPle"
+Issues = "https://github.com/PINNeAPPle-Labs/PINNeAPPle/issues"
+Changelog = "https://github.com/PINNeAPPle-Labs/PINNeAPPle/blob/main/CHANGELOG.md"
 
 # NOTE: a `[project.scripts]` section previously declared `pdb`/`pinneapple`
 # console entry points pointing at `pinneapple_pdb.cli:main`, but no
@@ -378,6 +379,7 @@ include = [
   "LICENSE",
   "NOTICE",
   "README.md",
+  "CHANGELOG.md",
 ]
 exclude = [
   "**/__pycache__",

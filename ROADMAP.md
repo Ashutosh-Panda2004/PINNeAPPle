@@ -1689,3 +1689,18 @@ Registro completo da sessão (pedidos, links, decisões D1–D5): `docs/dev/PEDI
 - **Ashutosh Sharma / NVIDIA GTC 2026 (LinkedIn)**: Onshape → Isaac Sim via OpenUSD, com o argumento de "continuidade semântica" (proveniência, montagens, materiais) entre CAD, simulação e twin. Próximo formato de exportação do `pinneapple_twin3d` (hoje glTF).
 - **[Vídeo: esteira de Kármán atrás de um NACA 4412](https://www.youtube.com/watch?v=k9FPxuhFlTo)** (Sarwesh Parbat): candidato a benchmark de LBM (número de Strouhal) para o `numerical_solvers.lbm`.
 - **[Wolfram Community: construção de singularidade de Navier-Stokes da OpenAI](https://community.wolfram.com/t/an-intuitive-exploration-of-openais-navier-stokes-singularity-construction-for-the-1m-millennium-prize-problem/28013)**: só o fio de comentários abriu (o notebook não). Nada a implementar.
+
+## 12. Requisitos permanentes (valem para toda versão futura)
+
+Registrado em 2026-10-03 a pedido de Yan. Estes requisitos não são uma entrega única: cada versão da biblioteca deve respeitá-los.
+
+### Fácil de usar e de contribuir por pessoas de fora, não só pelo mantenedor
+- **Primeiro uso em minutos.** Um `pip install pinneapple` seguido de um exemplo de poucas linhas deve funcionar sem ler a documentação inteira. Extras de instalação claros e uma checagem do ambiente (`pp.info()`) que diga o que falta.
+- **Uma porta de entrada pequena.** As operações principais (resolver, comparar, avaliar, validar) ficam acessíveis por poucas funções de alto nível, com nomes consistentes, e não só pelos dezenas de módulos internos.
+- **Contribuir sem conhecer o repositório inteiro.** `CONTRIBUTING.md` com ambiente, testes, lint, changelog e passo a passo de release; templates de issue e de PR em `.github/`; issues marcadas `good first issue`; um guia curto de "como adicionar um solver / modelo / benchmark / preset" com um arquivo-modelo cada.
+- **Testes rápidos e confiáveis para quem contribui.** Um conjunto rápido que roda em minutos e é bloqueante no CI; os testes lentos ou opcionais ficam em camadas separadas. Falha de CI nunca escondida (sem `|| true`).
+- **Mudanças rastreáveis.** Toda mudança visível ao usuário entra no `CHANGELOG.md` no mesmo PR; versões do PyPI e tags do git coincidem.
+- **Erros que ensinam.** Mensagens que dizem o que fazer (extra faltando, dependência opcional, entrada fora do envelope de validade) em vez de um traceback bruto.
+- **Contribuição de terceiros com licença clara.** Texto de licença completo no repositório e no pacote, regra de licença para código copiado (GPL fica só como ideia) e política de dados e modelos de terceiros já existente em `pinneapple_catalog.resources`.
+
+Como verificar: um voluntário que nunca viu o projeto instala, roda o primeiro exemplo e abre um PR trivial seguindo só o `CONTRIBUTING.md`; o que travar vira issue.
