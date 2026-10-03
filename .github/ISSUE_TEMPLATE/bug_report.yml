@@ -1,0 +1,22 @@
+name: Bug report
+description: Something gives a wrong result, crashes, or contradicts the docs
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: For a wrong number, say what the correct value is and how you know (theory, reference solver, paper).
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal code to reproduce
+      render: python
+    validations: {required: true}
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Paste the output of `python -c "import pinneapple as pp; pp.info()"` and your OS.
+    validations: {required: true}

@@ -25,12 +25,39 @@ Merged after the 0.6.2 release (not on PyPI yet).
   Rankine–Hugoniot normal-shock jump), pseudo-spectral 3-D Navier–Stokes DNS (`ns3d_spectral`) and a 2-D
   heated-channel incompressible solver (`thermal_channel_2d`) (#24).
 
+- `pinneapple_analysis.cost`: computational-cost validation per operation. `measure` (median time with spread, peak
+  memory, exact PyTorch FLOPs), `scaling_study` (fits `cost ~ n^k` with a bootstrap confidence interval and compares
+  it with a declared complexity such as `"n log n"`), `Budget` (time, memory, FLOPs, exponent limits) and `CostLedger`
+  (saved baseline; FLOPs gate strictly, time and memory loosely). `pinn_operation_costs` splits one PINN training
+  step into forward, first and second derivatives, backward and optimizer step; `profile_ops` gives a per-operator table.
+- `pinneapple_tools.visualization.pyvista_bridge` and the `pinneapple[pyvista]` extra: CalculiX model plus `.frd`
+  results to a PyVista grid (displacement, von Mises, optional exaggerated warp; C3D4/C3D8/C3D10/C3D20 families, checked
+  against beam theory and box volume), `pinneapple_twin3d` scenes to `MultiBlock`, `.vtu` export for ParaView and
+  off-screen PNG/GIF rendering. `can_render()` probes for an OpenGL context in a subprocess because VTK crashes the
+  interpreter when none exists; on a headless server use `xvfb-run -a`.
+- `pinneapple[cost]` extra (psutil) for CPU memory sampling in the cost module.
+- GitHub issue forms (bug report, feature request) and a pull request template; CI runs a blocking tier for the public
+  API, cost module and the PyVista and CalculiX bridges.
+- Example `examples/calculix_pyvista_cantilever.py`.
+
 ### Changed
 - **Behavior:** `bekker_wong` terramechanics rewritten: input validation, break points at the stress kinks,
   sign-aware shear for braking, Brent's method for sinkage, no fabricated values when the solver fails, and a
   vectorised, autograd-differentiable batched Gauss–Legendre quadrature (#24).
 - **Behavior:** terramechanics preset: removed a false physics constraint (`Fx(s=0)=0`, which the solver itself
   violates) and added a verified one (`dFz/dz >= 0`) (#24).
+
+### Fixed
+- `from pinneapple import *` and `getattr` on 24 names in `pinneapple.__all__` failed: lazy aliases such as `pp.uq`, `pp.geom`,
+  `pp.dt`, `pp.export` pointed at module names that never existed (`pinneapple_uq`, `pinneapple_geom`, ...) and the
+  streamline, world-model and scene imports used names that are not exported. Aliases now point to the real packages
+  (for example `pp.uq` is `pinneapple_analysis.uncertainty`); `pp.serve` is removed (no such module);
+  `plot_streamlines_2d_model` is `plot_streamlines_2d_from_model`; the world-model names `CosmosAdapter`,
+  `PhysicsVideoDataset`, `SimToRealAdapter`, `PhysicalScene` and `SceneObject` never existed and are replaced by
+  `PhysicsWorldModel`, `WorldModelDataset`, `WorldModelTrainer` and `PhysicsScenario`. A test now resolves every name.
+- `pp.info()` reported "optional deps missing" for modules that do not exist; it now imports the real packages and lists
+  optional third-party dependencies with the extra that installs each.
+- `LICENSE` was a truncated Apache-2.0 text (end of section 4 and the appendix were missing); replaced with the canonical text.
 
 ### Documentation
 - Recorded two failed attempts to fix mass conservation in the immersed-boundary `channel` mode (both reverted,

@@ -267,6 +267,18 @@ viz_interactive = [
   "kaleido>=0.2",
 ]
 
+# 3-D rendering of meshes and fields (CFD/FEM results, offscreen PNG/GIF export)
+pyvista = [
+  "pyvista>=0.43",
+  "matplotlib>=3.8",
+  "imageio>=2.34",
+]
+
+# Memory measurement in pinneapple_analysis.cost (falls back to tracemalloc without it)
+cost = [
+  "psutil>=5.9",
+]
+
 # Dev tools
 dev = [
   "ruff>=0.5",
