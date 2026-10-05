@@ -26,7 +26,6 @@ examples/numerical_solvers/09_solver_lmb_demo.py
 examples/numerical_solvers/10_solver_spectral_demo.py
 examples/numerical_solvers/11_cad_cfd_pipeline_demo.py
 examples/pinneapple_cosim/01_spring_mass_pinn.py
-examples/time_series/00_quickstart.py
 examples/time_series/01_FNO.py
 examples/time_series/02_full_pipeline.py
 examples/time_series/03_audit_and_features.py
